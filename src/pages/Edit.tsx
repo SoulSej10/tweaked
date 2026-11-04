@@ -79,9 +79,9 @@ function Form({ full }: { full: RecipeFull | null }) {
   }
 
   return (
-    <main>
-      <header className="bar">
-        <Link to={full ? `/recipe/${full.recipe.id}` : '/'} className="btn ghost">← Back</Link>
+    <main className="page with-bar">
+      <header className="topbar">
+        <Link to={full ? `/recipe/${full.recipe.id}` : '/recipes'} className="btn ghost">← Back</Link>
         <h1>{editing ? 'Edit' : 'New recipe'}</h1>
       </header>
       <form onSubmit={save} className="stack pad">
@@ -146,7 +146,9 @@ function Form({ full }: { full: RecipeFull | null }) {
         )}
 
         {err && <p className="error" role="alert">{err}</p>}
-        <button className="btn primary" disabled={busy || !title.trim()}>{busy ? 'Saving…' : 'Save'}</button>
+        <div className="actionbar">
+          <button className="btn primary grow" disabled={busy || !title.trim()}>{busy ? 'Saving…' : 'Save'}</button>
+        </div>
       </form>
     </main>
   )

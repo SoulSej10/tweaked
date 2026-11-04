@@ -97,6 +97,16 @@ export async function logCook(recipeId: string, note: string | null, photoPath: 
   return check(await supabase.rpc('log_cook', { p_recipe: recipeId, p_note: note, p_photo: photoPath })) as string
 }
 
+export type CookStat = { recipe_id: string; cooked_at: string; tweak_note: string | null }
+
+/** Recent cook log entries, newest first (for the dashboard's streak and weekly numbers). */
+export async function listRecentCooks(days = 60): Promise<CookStat[]> {
+  const since = new Date(Date.now() - days * 86400000).toISOString()
+  return check(
+    await supabase.from('cook_logs').select('recipe_id, cooked_at, tweak_note').gte('cooked_at', since).order('cooked_at', { ascending: false }).limit(500),
+  ) as CookStat[]
+}
+
 export async function deleteRecipe(id: string): Promise<void> {
   check(await supabase.from('recipes').delete().eq('id', id).select('id'))
 }

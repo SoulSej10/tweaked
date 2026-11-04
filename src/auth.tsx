@@ -42,8 +42,9 @@ export function Login() {
 
   return (
     <main className="login">
+      <p className="quiz-emoji bounce" aria-hidden>🍳</p>
       <h1>Tweaked</h1>
-      <p className="muted">Your version of every dish.</p>
+      <p className="muted">Easy dishes, made your way. Tweaked remembers every change you make.</p>
       <form onSubmit={submit} className="stack">
         <input type="email" required placeholder="Email" autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} />
         <input

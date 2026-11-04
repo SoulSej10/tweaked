@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { signedUrls } from '../lib/photo'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { deleteRecipe, getRecipe, rollbackTo } from '../lib/api'
+import { dishEmoji, tileIndex } from '../lib/emoji'
 import { useAsync } from '../lib/hooks'
 import { convertIngredient, formatIngredient, scaleAmount, type UnitSystem } from '../lib/parse'
 
@@ -18,8 +19,8 @@ export default function Detail() {
   const [busy, setBusy] = useState(false)
   const [units, setUnits] = useState<UnitSystem>('as-saved')
 
-  if (loading) return <main><p className="muted pad">Loading…</p></main>
-  if (error || !data) return <main><p className="error pad">{error ?? 'Not found'}</p><Link to="/" className="btn">Back</Link></main>
+  if (loading) return <main className="page"><p className="muted pad">Loading…</p></main>
+  if (error || !data) return <main className="page"><p className="error pad">{error ?? 'Not found'}</p><Link to="/recipes" className="btn">Back</Link></main>
 
   const { recipe, versions, logs, urls } = data
   const currentId = recipe.current_version_id
@@ -45,26 +46,29 @@ export default function Detail() {
   async function remove() {
     if (!window.confirm(`Delete “${recipe.title}” and all its versions? This cannot be undone.`)) return
     await deleteRecipe(recipe.id)
-    nav('/', { replace: true })
+    nav('/recipes', { replace: true })
   }
 
   return (
-    <main>
-      <header className="bar no-print">
-        <Link to="/" className="btn ghost">← Library</Link>
-        <Link to={`/recipe/${recipe.id}/edit`} className="btn ghost">Edit</Link>
-      </header>
+    <main className="page with-bar">
+      <div className={`banner short dthumb t${tileIndex(recipe.title)} no-print`}>
+        <span className="demoji" aria-hidden>{dishEmoji(recipe.title, recipe.tags)}</span>
+        <Link to="/recipes" className="float-back" aria-label="Back to recipes">←</Link>
+        <Link to={`/recipe/${recipe.id}/edit`} className="float-edit">Edit</Link>
+      </div>
 
       <section className="pad">
         <h1 className="title">{recipe.title}</h1>
+        <p className="chips-inline">
+          <span className="pill">{recipe.cooked_count > 0 ? `Cooked ${recipe.cooked_count}×` : 'Not cooked yet'}</span>
+          {recipe.bring_from_home && <span className="pill alt">🍱 packed food</span>}
+          {recipe.tags.slice(0, 4).map((t) => <span key={t} className="pill">#{t}</span>)}
+        </p>
         {lastTweak && <p className="tweak">Last time: {lastTweak.tweak_note}</p>}
         <p className="meta">
-          {recipe.cooked_count > 0 ? `Cooked ${recipe.cooked_count}×` : 'Not cooked yet'}
-          {recipe.source_type !== 'own' && recipe.source_url && <> · <a href={recipe.source_url} target="_blank" rel="noreferrer">source</a></>}
-          {recipe.source_note && recipe.source_type === 'person' && <> · {recipe.source_note}</>}
+          {recipe.source_type !== 'own' && recipe.source_url && <a href={recipe.source_url} target="_blank" rel="noreferrer">Source</a>}
+          {recipe.source_note && recipe.source_type === 'person' && <> {recipe.source_note}</>}
         </p>
-
-        <Link to={`/recipe/${recipe.id}/cook`} className="btn primary cook no-print">Cook</Link>
 
         {versions.length > 1 && (
           <div className="versions">
@@ -135,6 +139,11 @@ export default function Detail() {
         </div>
         <button className="link danger no-print" onClick={remove}>Delete recipe</button>
       </section>
+
+      <div className="actionbar no-print">
+        <Link to={`/recipe/${recipe.id}/edit`} className="btn">Edit</Link>
+        <Link to={`/recipe/${recipe.id}/cook`} className="btn primary grow">Start cooking</Link>
+      </div>
     </main>
   )
 }

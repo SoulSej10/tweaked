@@ -1,5 +1,8 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
+import { Shell } from '../components/Shell'
+import { AVOID, CUISINES, EFFORTS, KINDS } from '../lib/prefs'
+import { usePrefs } from '../prefs'
 import { exportEverything } from '../lib/api'
 import { formatIngredient } from '../lib/parse'
 import { supabase } from '../lib/supabase'
@@ -16,6 +19,7 @@ function download(name: string, text: string, type: string) {
 }
 
 export default function Settings() {
+  const { prefs } = usePrefs()
   const [theme, setTheme] = useState<Theme>(loadTheme)
   const [busy, setBusy] = useState(false)
   const [err, setErr] = useState<string | null>(null)
@@ -55,13 +59,21 @@ export default function Settings() {
     } catch (e) { setErr((e as Error).message) } finally { setBusy(false) }
   }
 
+  const labels = (ids: string[], list: readonly { id: string; label: string }[]) =>
+    ids.map((id) => list.find((x) => x.id === id)?.label).filter(Boolean).join(', ') || 'Anything'
+
   return (
-    <main>
-      <header className="bar">
-        <Link to="/" className="btn ghost">← Library</Link>
-        <h1>Settings</h1>
-      </header>
+    <Shell>
+      <header className="topbar"><h1>Me</h1></header>
       <section className="pad stack">
+        <h2>My taste</h2>
+        <div className="panel">
+          <p><b>Cuisines</b><br /><span className="muted">{labels(prefs.cuisines, CUISINES)}</span></p>
+          <p><b>Dishes</b><br /><span className="muted">{labels(prefs.kinds, KINDS)}</span></p>
+          <p><b>Effort</b><br /><span className="muted">{labels([prefs.effort], EFFORTS)}</span></p>
+          <p><b>Skipping</b><br /><span className="muted">{labels(prefs.avoid, AVOID).replace('Anything', 'Nothing')}</span></p>
+          <Link className="btn" to="/onboarding">Retake the taste quiz</Link>
+        </div>
         <h2>Theme</h2>
         <div className="chips">
           {(['system', 'light', 'dark'] as const).map((t) => (
@@ -76,6 +88,6 @@ export default function Settings() {
         <h2>Account</h2>
         <button className="btn" onClick={() => supabase.auth.signOut()}>Sign out</button>
       </section>
-    </main>
+    </Shell>
   )
 }

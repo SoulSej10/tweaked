@@ -18,8 +18,8 @@ export default function Compare() {
   const [params, setParams] = useSearchParams()
   const { data, error, loading } = useAsync(() => getRecipe(id), [id])
 
-  if (loading) return <main><p className="muted pad">Loading…</p></main>
-  if (error || !data) return <main><p className="error pad">{error ?? 'Not found'}</p></main>
+  if (loading) return <main className="page"><p className="muted pad">Loading…</p></main>
+  if (error || !data) return <main className="page"><p className="error pad">{error ?? 'Not found'}</p></main>
 
   const { recipe, versions } = data
   const asc = [...versions].sort((x, y) => x.version_number - y.version_number)
@@ -48,8 +48,8 @@ export default function Compare() {
   )
 
   return (
-    <main>
-      <header className="bar">
+    <main className="page">
+      <header className="topbar">
         <Link to={`/recipe/${recipe.id}`} className="btn ghost">← Back</Link>
         <h1>Compare</h1>
       </header>
@@ -57,12 +57,18 @@ export default function Compare() {
         <h2 className="title small-title">{recipe.title}</h2>
         <p className="muted small">Highlighted lines exist only in that version.</p>
         <div className="compare">
-          <div>{picker('a', a.id)}{b.change_note && a.id !== b.id && null}</div>
-          <div>{picker('b', b.id)}{b.change_note && <p className="muted small">{b.change_note}</p>}</div>
-          <div><h3>Ingredients</h3><Column lines={ingA} other={ingB} /></div>
-          <div><h3>Ingredients</h3><Column lines={ingB} other={ingA} /></div>
-          <div><h3>Steps</h3><Column lines={stA} other={stB} /></div>
-          <div><h3>Steps</h3><Column lines={stB} other={stA} /></div>
+          <div className="cmp-col">
+            {picker('a', a.id)}
+            {a.change_note && <p className="muted small">{a.change_note}</p>}
+            <h3>Ingredients</h3><Column lines={ingA} other={ingB} />
+            <h3>Steps</h3><Column lines={stA} other={stB} />
+          </div>
+          <div className="cmp-col">
+            {picker('b', b.id)}
+            {b.change_note && <p className="muted small">{b.change_note}</p>}
+            <h3>Ingredients</h3><Column lines={ingB} other={ingA} />
+            <h3>Steps</h3><Column lines={stB} other={stA} />
+          </div>
         </div>
       </section>
     </main>
