@@ -93,8 +93,8 @@ export async function rollbackTo(recipeId: string, versionId: string) {
   return check(await supabase.rpc('set_current_version', { p_recipe: recipeId, p_version: versionId })) as string
 }
 
-export async function logCook(recipeId: string, note: string | null) {
-  return check(await supabase.rpc('log_cook', { p_recipe: recipeId, p_note: note })) as string
+export async function logCook(recipeId: string, note: string | null, photoPath: string | null = null) {
+  return check(await supabase.rpc('log_cook', { p_recipe: recipeId, p_note: note, p_photo: photoPath })) as string
 }
 
 export async function deleteRecipe(id: string): Promise<void> {

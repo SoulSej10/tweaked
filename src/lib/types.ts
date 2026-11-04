@@ -46,6 +46,7 @@ export type CookLog = {
   version_id: string | null
   cooked_at: string
   tweak_note: string | null
+  photo_path: string | null
 }
 
 /** A recipe plus the bits the library card needs. */

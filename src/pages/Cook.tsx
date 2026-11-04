@@ -1,8 +1,10 @@
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { getRecipe, logCook } from '../lib/api'
 import { useAsync, useWakeLock } from '../lib/hooks'
 import { formatDuration, formatIngredient } from '../lib/parse'
+import { uploadDishPhoto } from '../lib/photo'
+import { useDictation } from '../lib/speech'
 
 function Timer({ seconds }: { seconds: number }) {
   const [left, setLeft] = useState(seconds)
@@ -42,6 +44,8 @@ export default function Cook() {
   const touchX = useRef<number | null>(null)
 
   useWakeLock(!loading && !finished)
+  const [photo, setPhoto] = useState<File | null>(null)
+  const dictation = useDictation(useCallback((t: string) => setNote((n) => (n ? `${n} ${t}` : t)), []))
 
   if (loading) return <main className="cook"><p className="muted pad">Loading…</p></main>
   if (error || !data) return <main className="cook"><p className="error pad">{error ?? 'Not found'}</p></main>
@@ -57,7 +61,8 @@ export default function Cook() {
     setErr(null)
     try {
       const text = kind === 'same' ? null : note.trim() || null
-      await logCook(recipe.id, text)
+      const photoPath = photo ? await uploadDishPhoto(photo, recipe.id).catch(() => null) : null
+      await logCook(recipe.id, text, photoPath)
       if (kind === 'version') nav(`/recipe/${recipe.id}/edit?note=${encodeURIComponent(text ?? '')}`, { replace: true })
       else nav(`/recipe/${recipe.id}`, { replace: true })
     } catch (e) {
@@ -80,9 +85,20 @@ export default function Cook() {
             aria-label="What did you change?"
             onKeyDown={(e) => e.key === 'Enter' && note.trim() && void finish('note')}
           />
+          <div className="row">
+            {dictation.supported && (
+              <button type="button" className={`btn ${dictation.listening ? 'primary' : ''}`} onClick={dictation.toggle} aria-pressed={dictation.listening}>
+                {dictation.listening ? '● Listening… tap to stop' : '🎤 Say it'}
+              </button>
+            )}
+            <label className="btn photo-pick">
+              {photo ? '📷 Photo added' : '📷 Add photo'}
+              <input type="file" accept="image/*" capture="environment" hidden onChange={(e) => setPhoto(e.target.files?.[0] ?? null)} />
+            </label>
+          </div>
           {err && <p className="error" role="alert">{err}</p>}
           <button className="btn primary" disabled={busy || !note.trim()} onClick={() => finish('note')}>Save note</button>
-          <button className="btn" disabled={busy} onClick={() => finish('same')}>Nothing, same as before</button>
+          <button className="btn" disabled={busy} onClick={() => finish('same')}>{photo ? 'Save photo only' : 'Nothing, same as before'}</button>
           <button className="btn" disabled={busy || !note.trim()} onClick={() => finish('version')}>Save note + new version</button>
           <Link to={`/recipe/${recipe.id}`} className="link">Skip</Link>
         </section>

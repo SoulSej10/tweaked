@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { signedUrls } from '../lib/photo'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { deleteRecipe, getRecipe, rollbackTo } from '../lib/api'
 import { useAsync } from '../lib/hooks'
@@ -7,7 +8,11 @@ import { convertIngredient, formatIngredient, scaleAmount, type UnitSystem } fro
 export default function Detail() {
   const { id = '' } = useParams()
   const nav = useNavigate()
-  const { data, error, loading, reload } = useAsync(() => getRecipe(id), [id])
+  const { data, error, loading, reload } = useAsync(async () => {
+    const full = await getRecipe(id)
+    const urls = await signedUrls(full.logs.map((l) => l.photo_path).filter((x): x is string => Boolean(x))).catch(() => ({}))
+    return { ...full, urls: urls as Record<string, string> }
+  }, [id])
   const [viewId, setViewId] = useState<string | null>(null)
   const [servings, setServings] = useState<number | null>(null)
   const [busy, setBusy] = useState(false)
@@ -16,7 +21,7 @@ export default function Detail() {
   if (loading) return <main><p className="muted pad">Loading…</p></main>
   if (error || !data) return <main><p className="error pad">{error ?? 'Not found'}</p><Link to="/" className="btn">Back</Link></main>
 
-  const { recipe, versions, logs } = data
+  const { recipe, versions, logs, urls } = data
   const currentId = recipe.current_version_id
   const shown = versions.find((v) => v.id === (viewId ?? currentId)) ?? versions[0]
   const isCurrent = shown?.id === currentId
@@ -118,6 +123,7 @@ export default function Detail() {
               {logs.map((l) => (
                 <li key={l.id}>
                   <time>{new Date(l.cooked_at).toLocaleDateString()}</time> {l.tweak_note ?? <span className="muted">no changes</span>}
+                  {l.photo_path && urls[l.photo_path] && <img className="dish" src={urls[l.photo_path]} alt={`${recipe.title} on ${new Date(l.cooked_at).toLocaleDateString()}`} loading="lazy" />}
                 </li>
               ))}
             </ul>
