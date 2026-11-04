@@ -36,17 +36,20 @@ export default function Discover() {
   }, [])
 
   const browse = useAsync(() => browseDishes(pick), [JSON.stringify(pick), spin])
-  const local = useAsync(() => (searching ? searchCatalog(term) : Promise.resolve([] as Dish[])), [term])
-  const web = useAsync(() => (webTerm.length >= 3 ? searchWeb(webTerm) : Promise.resolve([] as Dish[])), [webTerm])
+  // Each result remembers which query it answers, so we never show "nothing found" for a query that is still loading.
+  const local = useAsync(async () => ({ q: term, dishes: searching ? await searchCatalog(term) : ([] as Dish[]) }), [term])
+  const web = useAsync(async () => ({ q: webTerm, dishes: webTerm.length >= 3 ? await searchWeb(webTerm) : ([] as Dish[]) }), [webTerm])
+  const localReady = local.data?.q === term
+  const webReady = web.data?.q === webTerm && webTerm === term
 
   const browseList = useMemo(
     () => (browse.data ?? []).filter((d) => (!simple || isSimple(d, prefs.effort)) && !conflicts(d, prefs.avoid)),
     [browse.data, simple, prefs.effort, prefs.avoid],
   )
   // When searching, do not hide results behind "keep it simple": people asked for that dish by name.
-  const localList = useMemo(() => (local.data ?? []).filter((d) => !conflicts(d, prefs.avoid)), [local.data, prefs.avoid])
+  const localList = useMemo(() => (local.data?.dishes ?? []).filter((d) => !conflicts(d, prefs.avoid)), [local.data, prefs.avoid])
   const localIds = new Set(localList.map((d) => d.id))
-  const webList = (web.data ?? []).filter((d) => !localIds.has(d.id) && !conflicts(d, prefs.avoid))
+  const webList = (web.data?.dishes ?? []).filter((d) => !localIds.has(d.id) && !conflicts(d, prefs.avoid))
 
   const choose = (p: Browse) => {
     setPick(p)
@@ -54,8 +57,8 @@ export default function Discover() {
     setShown(PAGE)
   }
 
-  const webPending = searching && (web.loading || webTerm !== term)
-  const nothing = searching && !local.loading && localList.length === 0 && webList.length === 0 && !webPending
+  const webPending = searching && !webReady
+  const nothing = searching && localReady && webReady && localList.length === 0 && webList.length === 0
   const list = browseList.slice(0, shown)
   const googleUrl = `https://www.google.com/search?q=${encodeURIComponent(`${term} recipe`)}`
 
@@ -92,7 +95,7 @@ export default function Discover() {
 
       {searching ? (
         <>
-          {local.loading && <Skeletons n={4} />}
+          {!localReady && localList.length === 0 && <Skeletons n={4} />}
           {localList.length > 0 && (
             <>
               <div className="sec-head"><h2>In Tweaked ({localList.length})</h2></div>
@@ -117,7 +120,7 @@ export default function Discover() {
               </div>
             </div>
           )}
-          {!nothing && !local.loading && !webPending && (
+          {!nothing && localReady && webReady && (
             <p className="pad status muted small">Can't see the one you want? <Link to={`/new?title=${encodeURIComponent(term)}`}>Add “{term}” yourself</Link> or <a href={googleUrl} target="_blank" rel="noreferrer">search the web</a>.</p>
           )}
         </>
