@@ -1,5 +1,5 @@
-import { HttpError } from './auth'
-import { isSocial, validateRecipe, type WebRecipe } from './recipe'
+import { HttpError } from './auth.js'
+import { isSocial, validateRecipe, type WebRecipe } from './recipe.js'
 
 const API = 'https://api.anthropic.com/v1/messages'
 const model = () => process.env.ANTHROPIC_MODEL || 'claude-haiku-5-5'

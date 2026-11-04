@@ -1,6 +1,6 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
-import { aiEnabled, aiWebSearch } from './_lib/anthropic'
-import { fail, requireUser, send, takeCredit } from './_lib/auth'
+import { aiEnabled, aiWebSearch } from './_lib/anthropic.js'
+import { fail, requireUser, send, takeCredit } from './_lib/auth.js'
 
 /**
  * POST { q } -> { results: [{ title, url, site }], creditsLeft }

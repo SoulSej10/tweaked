@@ -1,8 +1,8 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
-import { aiEnabled, aiExtract } from './_lib/anthropic'
-import { fail, requireUser, send, takeCredit } from './_lib/auth'
-import { extractFromPage, isSocial, pageToText } from './_lib/recipe'
-import { checkUrl, fetchPage } from './_lib/safeFetch'
+import { aiEnabled, aiExtract } from './_lib/anthropic.js'
+import { fail, requireUser, send, takeCredit } from './_lib/auth.js'
+import { extractFromPage, isSocial, pageToText } from './_lib/recipe.js'
+import { checkUrl, fetchPage } from './_lib/safeFetch.js'
 
 /**
  * POST { url } -> { recipe, via }

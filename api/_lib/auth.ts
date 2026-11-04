@@ -1,5 +1,5 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
-import { FetchError } from './safeFetch'
+import { FetchError } from './safeFetch.js'
 
 export class HttpError extends Error {
   constructor(
