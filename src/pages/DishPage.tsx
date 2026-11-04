@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { createRecipe } from '../lib/api'
-import { dishToRecipe, dishUrl, lookup, thumbUrl } from '../lib/discover'
+import { dishToRecipe, dishUrl, lookup, thumbUrl, urlFromDishId } from '../lib/discover'
 import { dishEmoji, tileIndex } from '../lib/emoji'
 import { useAsync } from '../lib/hooks'
 import { addItems } from '../lib/shopping'
@@ -14,11 +14,25 @@ export default function DishPage() {
   const [err, setErr] = useState<string | null>(null)
   const [added, setAdded] = useState<number | null>(null)
 
-  if (loading) return <main className="page"><p className="muted pad">Loading…</p></main>
+  const fromWeb = id.startsWith('url-')
+  const originalUrl = urlFromDishId(id)
+  if (loading) {
+    return (
+      <main className="page">
+        <header className="topbar"><Link to="/discover" className="btn ghost">← Back</Link></header>
+        <div className="empty">
+          <p className="nudge-emoji bounce" aria-hidden>{fromWeb ? '🌐' : '🍳'}</p>
+          <h2>{fromWeb ? 'Reading the page…' : 'Loading…'}</h2>
+          {fromWeb && <p className="muted">Finding the ingredients and steps. This takes a few seconds.</p>}
+        </div>
+      </main>
+    )
+  }
   if (error || !dish) return (
     <main className="page">
       <header className="topbar"><Link to="/discover" className="btn ghost">← Back</Link></header>
       <p className="error pad">{error ?? 'That dish is not available any more.'}</p>
+      {originalUrl && <p className="pad"><a className="btn" href={originalUrl} target="_blank" rel="noreferrer">Open the original page ↗</a></p>}
     </main>
   )
 
@@ -40,7 +54,7 @@ export default function DishPage() {
     <main className="page with-bar">
       <div className={`banner dthumb t${tileIndex(dish.name)}`}>
         <span className="demoji" aria-hidden>{dishEmoji(dish.name, [dish.category])}</span>
-        {dish.thumb && <img src={thumbUrl(dish, 'large')} alt={dish.name} onError={(e) => (e.currentTarget.style.display = 'none')} />}
+        {dish.thumb && <img src={thumbUrl(dish, 'large')} alt={dish.name} referrerPolicy="no-referrer" onError={(e) => (e.currentTarget.style.display = 'none')} />}
         <Link to="/discover" className="float-back" aria-label="Back">←</Link>
       </div>
 
@@ -53,7 +67,11 @@ export default function DishPage() {
           <span className="pill">{dish.steps.length} steps</span>
           {dish.minutes && <span className="pill">{dish.minutes} min</span>}
         </p>
-        <p className="muted small">Suggested from an open recipe collection. Save it, then change it however you like. Tweaked remembers every version.</p>
+        {fromWeb ? (
+          <p className="muted small">Read from <a href={dishUrl(dish)} target="_blank" rel="noreferrer">{new URL(dishUrl(dish)).hostname.replace(/^www\./, '')}</a>. The recipe belongs to that site, so we keep the link. Save it, then change it however you like.</p>
+        ) : (
+          <p className="muted small">Suggested from an open recipe collection. Save it, then change it however you like. Tweaked remembers every version.</p>
+        )}
 
         <h2>Ingredients</h2>
         <ul className="plain ing">

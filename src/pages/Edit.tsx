@@ -3,7 +3,9 @@ import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { addVersion, createRecipe, getRecipe, updateRecipeMeta, type RecipeFull } from '../lib/api'
 import { useAsync } from '../lib/hooks'
 import { detectSource, formatIngredient, formatSteps, importCaption, parseIngredients, parseSteps } from '../lib/parse'
+import { dishToRecipe } from '../lib/discover'
 import { CUISINES, KINDS } from '../lib/prefs'
+import { importUrl, recipeToDish } from '../lib/web'
 import type { SourceType } from '../lib/types'
 
 const SOURCES: { id: SourceType; label: string }[] = [
@@ -55,6 +57,32 @@ function Form({ full }: { full: RecipeFull | null }) {
 
   const pastedLink = detectSource(caption)
   const linkOnly = Boolean(pastedLink.url) && caption.replace(pastedLink.url ?? '', '').trim().length < 12
+  const readable = linkOnly && pastedLink.type === 'link' // a normal web page we can read, unlike Facebook/Instagram
+  const [importing, setImporting] = useState(false)
+  const [importErr, setImportErr] = useState<string | null>(null)
+
+  async function importPage() {
+    if (!pastedLink.url) return
+    setImporting(true)
+    setImportErr(null)
+    try {
+      const { recipe } = await importUrl(pastedLink.url)
+      const dish = recipeToDish(recipe)
+      const r = dishToRecipe(dish)
+      setTitle((t) => t || recipe.title)
+      setIngText(r.ingredients.map(formatIngredient).join('\n'))
+      setStepText(r.steps.map((s) => s.text).join('\n'))
+      setSourceUrl(recipe.url)
+      setSourceType('link')
+      setSourceNote(`Imported from ${recipe.site}`)
+      if (recipe.servings) setServings(recipe.servings)
+      setTags((t) => [...new Set([...t.split(',').map(normTag).filter(Boolean), ...r.meta.tags])].join(', '))
+    } catch (e) {
+      setImportErr((e as Error).message)
+    } finally {
+      setImporting(false)
+    }
+  }
 
   function runImport() {
     const out = importCaption(caption)
@@ -124,8 +152,14 @@ function Form({ full }: { full: RecipeFull | null }) {
             <summary>📋 Paste a caption or recipe text</summary>
             <p className="muted small">From Facebook, Instagram or TikTok: open the post, press and hold the caption to copy it, then paste it here. We pick out the ingredients, steps, hashtags and the link.</p>
             <textarea rows={5} placeholder="Paste a reel caption or recipe text" value={caption} onChange={(e) => setCaption(e.target.value)} />
-            {linkOnly && <p className="callout-plain">That's just a link. Facebook and Instagram only show recipes to their own apps, so Tweaked can't read the post for you. <a href={pastedLink.url ?? '#'} target="_blank" rel="noreferrer">Open it</a>, copy the caption, and paste that here. We'll keep the link as the source.</p>}
-            <button type="button" className="btn" onClick={runImport} disabled={!caption.trim()}>{linkOnly ? 'Save the link as the source' : 'Fill in the form'}</button>
+            {linkOnly && !readable && <p className="callout-plain">That's just a link. Facebook and Instagram only show recipes to their own apps, so Tweaked can't read the post for you. <a href={pastedLink.url ?? '#'} target="_blank" rel="noreferrer">Open it</a>, copy the caption, and paste that here. We'll keep the link as the source.</p>}
+            {readable && <p className="callout-plain">That looks like a web page. Tweaked can read the recipe from it for you.</p>}
+            {importErr && <p className="error" role="alert">{importErr}</p>}
+            {readable ? (
+              <button type="button" className="btn primary" onClick={importPage} disabled={importing}>{importing ? 'Reading the page…' : '🌐 Import this page'}</button>
+            ) : (
+              <button type="button" className="btn" onClick={runImport} disabled={!caption.trim()}>{linkOnly ? 'Save the link as the source' : 'Fill in the form'}</button>
+            )}
           </details>
         )}
 

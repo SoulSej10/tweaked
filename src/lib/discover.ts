@@ -8,7 +8,8 @@ import type { Ingredient, Step } from './types'
  *    from TheMealDB, DummyJSON and TheCocktailDB: instant and works offline
  *  - Wikibooks Cookbook: searched live, for dishes that are not in the catalog (e.g. "Bicol Express")
  *  - the three original APIs, only as a fallback if the catalog cannot be loaded
- * Dish ids: plain number = TheMealDB, "dj-5" = DummyJSON, "cd-11007" = TheCocktailDB, "wb-Cookbook:Title" = Wikibooks.
+ * Dish ids: plain number = TheMealDB, "dj-5" = DummyJSON, "cd-11007" = TheCocktailDB, "wb-Cookbook:Title" = Wikibooks,
+ * "url-<base64 of a web address>" = any recipe page imported through our server (see src/lib/web.ts).
  */
 const MEAL = 'https://www.themealdb.com/api/json/v1/1'
 const DUMMY = 'https://dummyjson.com/recipes'
@@ -142,7 +143,7 @@ type DummyRaw = {
 }
 
 /** DummyJSON has no category field: infer one so "chicken", "dessert" etc. still work. */
-function inferCategory(r: Pick<DummyRaw, 'name' | 'tags' | 'mealType'>): string {
+export function inferCategory(r: Pick<DummyRaw, 'name' | 'tags' | 'mealType'>): string {
   const text = `${r.name} ${(r.tags ?? []).join(' ')}`.toLowerCase()
   const meal = (r.mealType ?? []).join(' ').toLowerCase()
   // Whole words only: "15 pieces" must not look like "pie".
@@ -193,6 +194,31 @@ function drinkToDish(m: Raw): Dish {
     source: `https://www.thecocktaildb.com/drink/${m.idDrink}`,
     youtube: null,
     minutes: null,
+  }
+}
+
+// ---------- dishes imported from any web page ----------
+
+function toB64(s: string): string {
+  const bytes = new TextEncoder().encode(s)
+  let bin = ''
+  bytes.forEach((b) => (bin += String.fromCharCode(b)))
+  return btoa(bin).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '')
+}
+
+function fromB64(s: string): string {
+  const bin = atob(s.replace(/-/g, '+').replace(/_/g, '/'))
+  return new TextDecoder().decode(Uint8Array.from(bin, (c) => c.charCodeAt(0)))
+}
+
+/** Dish id for a web page: "url-" plus the address, so the page can be opened again from the id alone. */
+export const urlDishId = (url: string) => `url-${toB64(url)}`
+
+export function urlFromDishId(id: string): string | null {
+  try {
+    return id.startsWith('url-') ? fromB64(id.slice(4)) : null
+  } catch {
+    return null
   }
 }
 
@@ -308,6 +334,15 @@ export async function searchWeb(q: string): Promise<Dish[]> {
 export async function lookup(id: string): Promise<Dish | null> {
   const hit = catalogIndex.get(id) ?? readCached(id)
   if (hit) return hit
+  if (id.startsWith('url-')) {
+    const url = urlFromDishId(id)
+    if (!url) return null
+    const { importDish } = await import('./web')
+    const imported = await importDish(url)
+    catalogIndex.set(imported.id, imported)
+    writeCached(imported)
+    return imported
+  }
   if (!id.startsWith('wb-')) {
     await loadCatalog()
     const fromCatalog = catalogIndex.get(id)
@@ -422,6 +457,7 @@ export function conflicts(d: Dish, avoid: string[]): boolean {
 }
 
 export function dishUrl(d: Dish): string {
+  if (d.id.startsWith('url-')) return urlFromDishId(d.id) ?? ''
   if (d.id.startsWith('wb-')) return wikiPageUrl(wikiTitle(d.id))
   if (d.id.startsWith('dj-')) return `${DUMMY}/${d.id.slice(3)}`
   if (d.id.startsWith('cd-')) return `https://www.thecocktaildb.com/drink/${d.id.slice(3)}`
@@ -445,7 +481,8 @@ export function dishIdFromUrl(url: string | null): string | null {
       return null
     }
   }
-  return null
+  // Any other link was imported from the web: its id is just the address.
+  return /^https?:\/\//i.test(url) ? urlDishId(url) : null
 }
 
 const UNIT_ALIASES: Record<string, string> = {
@@ -467,9 +504,17 @@ export function measureToParts(measure: string): Pick<Ingredient, 'amount' | 'un
   return { amount: amount.replace(',', '.'), unit: '', note: `${word} ${rest}`.trim() }
 }
 
+function hostOf(url: string): string {
+  try {
+    return new URL(url).hostname.replace(/^www\./, '')
+  } catch {
+    return 'the web'
+  }
+}
+
 export function dishToRecipe(d: Dish) {
   // DummyJSON and Wikibooks give whole lines ("1 lb pork, cubed"); TheMealDB gives name and measure apart.
-  const wholeLines = d.id.startsWith('dj-') || d.id.startsWith('wb-')
+  const wholeLines = d.id.startsWith('dj-') || d.id.startsWith('wb-') || d.id.startsWith('url-')
   const ingredients: Ingredient[] = d.ingredients.map((i) =>
     wholeLines ? parseIngredientLine(i.name) ?? { name: i.name, amount: '', unit: '', note: '' } : { name: i.name, ...measureToParts(i.measure) },
   )
@@ -480,7 +525,7 @@ export function dishToRecipe(d: Dish) {
       title: d.name,
       source_type: 'link' as const,
       source_url: dishUrl(d),
-      source_note: d.id.startsWith('wb-') ? 'Wikibooks Cookbook, CC BY-SA' : 'from the Discover feed',
+      source_note: d.id.startsWith('wb-') ? 'Wikibooks Cookbook, CC BY-SA' : d.id.startsWith('url-') ? `Imported from ${hostOf(dishUrl(d))}` : 'from the Discover feed',
       servings: null,
       tags,
       bring_from_home: false,

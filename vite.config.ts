@@ -27,6 +27,7 @@ export default defineConfig({
       },
       workbox: {
         navigateFallback: '/index.html',
+        navigateFallbackDenylist: [/^\/api\//],
         // Fonts and icons are part of the app shell; without these the app falls back to system fonts offline.
         globPatterns: ['**/*.{js,css,html,svg,png,ico,woff2,webmanifest}'],
         // Recipes stay viewable offline: try the network first, fall back to the last response.

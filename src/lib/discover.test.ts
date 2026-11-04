@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { cleanSteps, conflicts, dishIdFromUrl, dishToRecipe, isSimple, thumbUrl, type Dish } from './discover'
+import { cleanSteps, conflicts, dishIdFromUrl, dishToRecipe, isSimple, thumbUrl, urlDishId, type Dish } from './discover'
 import { cuisineOf } from './prefs'
 import { addItems, clearAll, clearDone, toggleItem } from './shopping'
 
@@ -52,7 +52,8 @@ describe('dish ids and links', () => {
     expect(dishIdFromUrl('https://www.themealdb.com/meal/52772')).toBe('52772')
     expect(dishIdFromUrl('https://dummyjson.com/recipes/5')).toBe('dj-5')
     expect(dishIdFromUrl('https://www.thecocktaildb.com/drink/11007')).toBe('cd-11007')
-    expect(dishIdFromUrl('https://example.com/x')).toBeNull()
+    expect(dishIdFromUrl('https://example.com/x')).toBe(urlDishId('https://example.com/x'))
+    expect(dishIdFromUrl('no link')).toBeNull()
     expect(dishIdFromUrl(null)).toBeNull()
   })
   it('only resizes TheMealDB thumbnails', () => {
@@ -106,5 +107,29 @@ describe('parseWikiRecipe', () => {
     expect(d?.name).toBe('Bicol Express')
     expect(d?.category).toBe('Beef')
     expect(d?.ingredients).toHaveLength(2)
+  })
+})
+
+import { urlFromDishId } from './discover'
+describe('dishes imported from a web address', () => {
+  it('round-trips any address through its id, including unusual characters', () => {
+    for (const u of ['https://kawalingpinoy.com/chicken-adobo/', 'https://example.com/recipe?x=1&y=ñandú', 'http://a.b/c d/é']) {
+      expect(urlFromDishId(urlDishId(u))).toBe(u)
+    }
+    expect(urlFromDishId('52772')).toBeNull()
+    expect(urlFromDishId('url-%%%')).toBeNull()
+  })
+  it('treats a saved web link as an already-saved dish', () => {
+    expect(dishIdFromUrl('https://kawalingpinoy.com/chicken-adobo/')).toBe(urlDishId('https://kawalingpinoy.com/chicken-adobo/'))
+    expect(dishIdFromUrl('https://www.themealdb.com/meal/52772')).toBe('52772')
+    expect(dishIdFromUrl('not a link')).toBeNull()
+  })
+  it('uses the original address as the source when saving an imported dish', () => {
+    const url = 'https://kawalingpinoy.com/chicken-adobo/'
+    const r = dishToRecipe(dish({ id: urlDishId(url), name: 'Chicken Adobo', ingredients: [{ name: '1 kg chicken, cut up', measure: '' }, { name: '1/2 cup soy sauce', measure: '' }], steps: ['Simmer 20 minutes.'] }))
+    expect(r.meta.source_url).toBe(url)
+    expect(r.meta.source_note).toBe('Imported from kawalingpinoy.com')
+    expect(r.ingredients[0]).toMatchObject({ name: 'chicken', amount: '1', unit: 'kg' })
+    expect(r.steps[0].timer_seconds).toBe(1200)
   })
 })

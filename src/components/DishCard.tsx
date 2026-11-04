@@ -7,7 +7,7 @@ export function DishCard({ dish, wide = false }: { dish: Dish; wide?: boolean })
     <Link to={`/dish/${encodeURIComponent(dish.id)}`} className={`dcard ${wide ? 'wide' : ''}`}>
       <div className={`dthumb t${tileIndex(dish.name)}`}>
         <span className="demoji" aria-hidden>{dishEmoji(dish.name, [dish.category])}</span>
-        {dish.thumb && <img src={thumbUrl(dish, 'small')} alt="" loading="lazy" onError={(e) => (e.currentTarget.style.display = 'none')} />}
+        {dish.thumb && <img src={thumbUrl(dish, 'small')} alt="" loading="lazy" referrerPolicy="no-referrer" onError={(e) => (e.currentTarget.style.display = 'none')} />}
       </div>
       <div className="dbody">
         <h3>{dish.name}</h3>

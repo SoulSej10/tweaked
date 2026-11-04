@@ -87,7 +87,7 @@ export default function Home() {
         <section className="hero rise">
           <Link to={`/dish/${encodeURIComponent(hero.id)}`} className={`hero-img dthumb t${tileIndex(hero.name)}`}>
             <span className="demoji" aria-hidden>{dishEmoji(hero.name, [hero.category])}</span>
-            {hero.thumb && <img src={thumbUrl(hero, 'medium')} alt="" decoding="async" fetchPriority="high" onError={(e) => (e.currentTarget.style.display = 'none')} />}
+            {hero.thumb && <img src={thumbUrl(hero, 'medium')} alt="" decoding="async" referrerPolicy="no-referrer" fetchPriority="high" onError={(e) => (e.currentTarget.style.display = 'none')} />}
             <span className="hero-badge">Tonight's pick</span>
           </Link>
           <div className="hero-body">

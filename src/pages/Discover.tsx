@@ -2,7 +2,8 @@ import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { DishCard } from '../components/DishCard'
 import { Shell } from '../components/Shell'
-import { browseDishes, conflicts, isSimple, loadCatalog, searchCatalog, searchWeb, type Browse, type Dish } from '../lib/discover'
+import { browseDishes, conflicts, isSimple, loadCatalog, searchCatalog, searchWeb, urlDishId, type Browse, type Dish } from '../lib/discover'
+import { webSearch, type WebResult } from '../lib/web'
 import { useAsync } from '../lib/hooks'
 import { CUISINES, KINDS } from '../lib/prefs'
 import { usePrefs } from '../prefs'
@@ -27,8 +28,9 @@ export default function Discover() {
   const [shown, setShown] = useState(PAGE)
   const [showHidden, setShowHidden] = useState(false)
 
-  const term = useDebounced(q.trim(), 200)
-  const webTerm = useDebounced(q.trim(), 600)
+  const isLink = /^https?:\/\//i.test(q.trim())
+  const term = useDebounced(isLink ? '' : q.trim(), 200)
+  const webTerm = useDebounced(isLink ? '' : q.trim(), 600)
   const searching = term.length >= 2
 
   // Warm the catalog as soon as the page opens so the first tap is instant.
@@ -76,10 +78,19 @@ export default function Discover() {
       </header>
 
       <form className="searchbar" onSubmit={(e) => e.preventDefault()}>
-        <input type="search" value={q} onChange={(e) => { setQ(e.target.value); setShowHidden(false) }} placeholder="Search any dish: bicol express, adobo, cake…" aria-label="Search dishes" enterKeyHint="search" />
+        <input type="search" value={q} onChange={(e) => { setQ(e.target.value); setShowHidden(false) }} placeholder="Search any dish, or paste a recipe link" aria-label="Search dishes" enterKeyHint="search" />
       </form>
 
-      {!searching && (
+      {isLink && (
+        <div className="empty">
+          <p className="nudge-emoji" aria-hidden>🔗</p>
+          <h2>Import this recipe page</h2>
+          <p className="muted">Tweaked reads the ingredients and steps from the page, so you can save and tweak your own version.</p>
+          <Link className="btn primary" to={`/dish/${encodeURIComponent(urlDishId(q.trim()))}`}>Read this page</Link>
+        </div>
+      )}
+
+      {!searching && !isLink && (
         <>
           <div className="chips" role="group" aria-label="Cuisine">
             <button className={`chip ${pick.type === 'mix' ? 'on' : ''}`} onClick={() => choose({ type: 'mix' })}>🎲 Mix</button>
@@ -121,6 +132,7 @@ export default function Discover() {
               <button className="link inline" onClick={() => setShowHidden(true)}>Show {hiddenCount === 1 ? 'it' : 'them'} anyway</button>
             </p>
           )}
+          {searching && localReady && webReady && <WebSearch term={term} />}
           {nothing && (
             <div className="empty">
               <p className="nudge-emoji" aria-hidden>🔎</p>
@@ -136,7 +148,7 @@ export default function Discover() {
             <p className="pad status muted small">Can't see the one you want? <Link to={`/new?title=${encodeURIComponent(term)}`}>Add “{term}” yourself</Link> or <a href={googleUrl} target="_blank" rel="noreferrer">search the web</a>.</p>
           )}
         </>
-      ) : (
+      ) : isLink ? null : (
         <>
           {browse.loading && <Skeletons n={6} />}
           {browse.error && <p className="error pad">Couldn't load dishes. Check your connection. <button className="link" onClick={browse.reload}>Try again</button></p>}
@@ -150,6 +162,49 @@ export default function Discover() {
         </>
       )}
     </Shell>
+  )
+}
+
+/** Search the whole web with AI (the server runs the search; it costs one daily lookup, so it only runs when asked). */
+function WebSearch({ term }: { term: string }) {
+  const [state, setState] = useState<{ term: string; status: 'loading' | 'done' | 'error'; results: WebResult[]; message?: string }>({ term, status: 'done', results: [] })
+  const [asked, setAsked] = useState<string | null>(null)
+  const current = asked === term && state.term === term ? state : null
+
+  async function run() {
+    setAsked(term)
+    setState({ term, status: 'loading', results: [] })
+    try {
+      const r = await webSearch(term)
+      setState({ term, status: 'done', results: r.results })
+    } catch (e) {
+      setState({ term, status: 'error', results: [], message: (e as Error).message })
+    }
+  }
+
+  if (!current) {
+    return (
+      <div className="webcard">
+        <p><b>🌐 Can't find it? Search the whole web.</b></p>
+        <p className="muted small">AI looks for “{term}” on recipe sites and Tweaked reads the one you pick. Uses 1 of your 20 daily web searches.</p>
+        <button className="btn primary" onClick={run}>Search the web for “{term}”</button>
+      </div>
+    )
+  }
+  if (current.status === 'loading') return <p className="muted small pad status">Searching the web…</p>
+  if (current.status === 'error') return <p className="error pad status" role="alert">{current.message}</p>
+  if (current.results.length === 0) return <p className="muted small pad status">No recipe pages found for “{term}”. Try different words.</p>
+  return (
+    <>
+      <div className="sec-head"><div><h2>From the web</h2><p className="muted small">Tap one and Tweaked reads the recipe</p></div></div>
+      <ul className="webres">
+        {current.results.map((r) => (
+          <li key={r.url}>
+            <Link to={`/dish/${encodeURIComponent(urlDishId(r.url))}`}><b>{r.title}</b><span>{r.site}</span></Link>
+          </li>
+        ))}
+      </ul>
+    </>
   )
 }
 

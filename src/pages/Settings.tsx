@@ -166,6 +166,7 @@ export default function Settings() {
         <h2>Tips</h2>
         <details className="help"><summary>What does “tweak” mean?</summary><p>Every time you cook, tell Tweaked what you changed (“less soy sauce”). Next time it shows that note first. Bigger changes can be saved as a new version, and the old one is never lost.</p></details>
         <details className="help"><summary>How are suggestions chosen?</summary><p>From your taste quiz and the dishes you cook most, using open recipe collections. We hide dishes with long ingredient lists or anything you chose to skip.</p></details>
+        <details className="help"><summary>Can I add a dish from any website?</summary><p>Yes. In Discover, paste a recipe link, or on the Add page paste it into the caption box. Tweaked reads the ingredients and steps from the page and keeps a link back to the site. If a dish is not in our collections, “Search the web” looks for it on recipe sites (limited to a few lookups a day). Facebook, Instagram and TikTok posts cannot be read; copy their caption and paste it instead.</p></details>
         <details className="help"><summary>Does it work offline?</summary><p>Your own recipes and ones you opened recently work offline once the app is installed. Suggestions need a connection.</p></details>
         <details className="help"><summary>Install on your phone</summary><p>Open this site in your phone's browser and choose “Add to Home Screen”. It then opens like an app.</p></details>
 
