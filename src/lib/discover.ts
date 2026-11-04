@@ -145,14 +145,15 @@ type DummyRaw = {
 function inferCategory(r: Pick<DummyRaw, 'name' | 'tags' | 'mealType'>): string {
   const text = `${r.name} ${(r.tags ?? []).join(' ')}`.toLowerCase()
   const meal = (r.mealType ?? []).join(' ').toLowerCase()
-  if (/beverage|smoothie|cocktail|drink|lemonade|juice/.test(meal + ' ' + text)) return 'Drink'
-  if (meal.includes('dessert') || /cake|cookie|pie|pudding|brownie|ice cream|tart/.test(text)) return 'Dessert'
+  // Whole words only: "15 pieces" must not look like "pie".
+  if (/\b(beverage|smoothie|cocktail|drink|lemonade|juice)s?\b/.test(meal + ' ' + text)) return 'Drink'
+  if (meal.includes('dessert') || /\b(cake|cookie|pie|pudding|brownie|ice cream|tart|flan|leche)s?\b/.test(text)) return 'Dessert'
   if (meal.includes('breakfast')) return 'Breakfast'
-  if (/pasta|spaghetti|noodle|lasagna|fettuccine|ramen/.test(text)) return 'Pasta'
-  if (/chicken/.test(text)) return 'Chicken'
-  if (/beef|steak|pork|lamb|bacon|sausage/.test(text)) return 'Beef'
-  if (/shrimp|prawn|salmon|fish|tuna|seafood|crab|cod/.test(text)) return 'Seafood'
-  if (/vegetarian|vegan|tofu|salad|veggie|lentil/.test(text)) return 'Vegetarian'
+  if (/\b(pasta|spaghetti|noodle|lasagna|fettuccine|ramen|pancit)s?\b/.test(text)) return 'Pasta'
+  if (/\bchicken\b/.test(text)) return 'Chicken'
+  if (/\b(beef|steak|pork|lamb|bacon|sausage)\b/.test(text)) return 'Beef'
+  if (/\b(shrimp|prawn|salmon|fish|tuna|seafood|crab|cod|squid)s?\b/.test(text)) return 'Seafood'
+  if (/\b(vegetarian|vegan|tofu|salad|veggie|lentil)s?\b/.test(text)) return 'Vegetarian'
   if (meal.includes('side') || meal.includes('appetizer') || meal.includes('snack')) return 'Side'
   return 'Miscellaneous'
 }
@@ -265,7 +266,7 @@ export function parseWikiRecipe(html: string, title: string): Dish | null {
     id: `wb-${title}`,
     name: label,
     thumb: '',
-    category: inferCategory({ name: label, tags: ingredients.slice(0, 6), mealType: [] }),
+    category: inferCategory({ name: label, tags: ingredients.slice(0, 4), mealType: [] }),
     cuisine: known?.label ?? country ?? '',
     cuisineId: known?.id ?? null,
     ingredients: ingredients.map((name) => ({ name, measure: '' })),

@@ -375,3 +375,5 @@ html[data-size='l'] { font-size: 106.25%; }
 
 .status { margin: 8px 0; }
 @media (min-width: 560px) { .page, .quiz { font-size: 1.05rem; } }
+.ing-head { margin-top: 1.25rem; }
+.ing-head h2 { margin: 0; }

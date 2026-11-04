@@ -96,3 +96,15 @@ describe('shopping list', () => {
     expect(typeof toggleItem).toBe('function')
   })
 })
+
+import { parseWikiRecipe } from './discover'
+describe('parseWikiRecipe', () => {
+  // DOMParser only exists in a browser; the live app is where this runs.
+  it.skipIf(typeof DOMParser === 'undefined')('reads ingredients and steps from a Wikibooks page', () => {
+    const html = '<div class="mw-parser-output"><h2>Ingredients</h2><ul><li>1 kg pork belly</li><li>15 pieces siling labuyo</li></ul><h2>Preparation</h2><ol><li>Heat the pan.</li></ol></div>'
+    const d = parseWikiRecipe(html, 'Cookbook:Bicol Express')
+    expect(d?.name).toBe('Bicol Express')
+    expect(d?.category).toBe('Beef')
+    expect(d?.ingredients).toHaveLength(2)
+  })
+})
