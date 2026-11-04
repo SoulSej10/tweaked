@@ -3,7 +3,8 @@ import { signedUrls } from '../lib/photo'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { deleteRecipe, getRecipe, rollbackTo } from '../lib/api'
 import { dishEmoji, tileIndex } from '../lib/emoji'
-import { useAsync } from '../lib/hooks'
+import { useAsync, useSettings } from '../lib/hooks'
+import { addItems } from '../lib/shopping'
 import { convertIngredient, formatIngredient, scaleAmount, type UnitSystem } from '../lib/parse'
 
 export default function Detail() {
@@ -17,7 +18,9 @@ export default function Detail() {
   const [viewId, setViewId] = useState<string | null>(null)
   const [servings, setServings] = useState<number | null>(null)
   const [busy, setBusy] = useState(false)
-  const [units, setUnits] = useState<UnitSystem>('as-saved')
+  const [defaults] = useSettings()
+  const [units, setUnits] = useState<UnitSystem>(defaults.units)
+  const [added, setAdded] = useState<number | null>(null)
 
   if (loading) return <main className="page"><p className="muted pad">Loading…</p></main>
   if (error || !data) return <main className="page"><p className="error pad">{error ?? 'Not found'}</p><Link to="/recipes" className="btn">Back</Link></main>
@@ -41,6 +44,12 @@ export default function Detail() {
     } finally {
       setBusy(false)
     }
+  }
+
+  function addToList() {
+    if (!shown) return
+    const lines = shown.ingredients.map((i) => formatIngredient(convertIngredient({ ...i, amount: scaleAmount(i.amount, factor, i.unit) }, units)))
+    setAdded(addItems(lines, recipe.title))
   }
 
   async function remove() {
@@ -114,6 +123,12 @@ export default function Detail() {
             ))}
           </ul>
         ) : <p className="muted">None yet. <Link to={`/recipe/${recipe.id}/edit`}>Add some</Link></p>}
+        {shown?.ingredients.length ? (
+          <div className="no-print row" style={{ marginTop: 10 }}>
+            <button className="btn" onClick={addToList}>🛒 Add to shopping list</button>
+            {added !== null && <Link to="/shopping" className="small">{added > 0 ? `Added ${added} · view list` : 'Already on your list · view'}</Link>}
+          </div>
+        ) : null}
 
         <h2>Steps</h2>
         {shown?.steps.length ? (

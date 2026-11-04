@@ -1,5 +1,5 @@
 import { KINDS, cuisineById } from './prefs'
-import type { History } from './discover'
+import { dishIdFromUrl, type History } from './discover'
 import type { RecipeCard } from './types'
 
 const CATEGORY_NAMES = new Set(KINDS.flatMap((k) => k.categories as readonly string[]).map((c) => c.toLowerCase()))
@@ -20,8 +20,8 @@ export function historyFrom(recipes: RecipeCard[]): History {
       if (cuisineById(t)) cuisines[t] = (cuisines[t] ?? 0) + weight
       if (CATEGORY_NAMES.has(t)) categories[t] = (categories[t] ?? 0) + weight
     }
-    const m = r.source_url?.match(/themealdb\.com\/meal\/(\d+)/)
-    if (m) savedIds.add(m[1])
+    const dishId = dishIdFromUrl(r.source_url)
+    if (dishId) savedIds.add(dishId)
   }
   return { cuisines, categories, savedIds }
 }

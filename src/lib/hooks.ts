@@ -1,4 +1,5 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
+import { loadSettings, saveSettings, type Settings } from './settings'
 
 export type Async<T> = { data: T | null; error: string | null; loading: boolean; reload: () => void }
 
@@ -53,4 +54,15 @@ export function useWakeLock(active: boolean) {
       void lock?.release()
     }
   }, [active])
+}
+
+/** Local app settings (units, voice language, text size...), saved on this device. */
+export function useSettings() {
+  const [settings, setSettings] = useState<Settings>(loadSettings)
+  const update = (patch: Partial<Settings>) => {
+    const next = { ...settings, ...patch }
+    setSettings(next)
+    saveSettings(next)
+  }
+  return [settings, update] as const
 }

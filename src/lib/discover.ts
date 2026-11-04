@@ -2,7 +2,16 @@ import { AVOID, CUISINES, KINDS, cuisineOf, type Cuisine, type Effort, type Pref
 import { parseStepLine } from './parse'
 import type { Ingredient, Step } from './types'
 
-const BASE = 'https://www.themealdb.com/api/json/v1/1'
+/**
+ * Three open recipe sources, all free and callable straight from the browser:
+ *  - TheMealDB (main)      ids are plain numbers, e.g. "52772"
+ *  - DummyJSON recipes     ids look like "dj-5" (50 recipes, adds Korean/Pakistani/Lebanese and more)
+ *  - TheCocktailDB         ids look like "cd-11007" (non-alcoholic drinks only)
+ * If the main source fails or has too little, the others fill in.
+ */
+const MEAL = 'https://www.themealdb.com/api/json/v1/1'
+const DUMMY = 'https://dummyjson.com/recipes'
+const DRINK = 'https://www.thecocktaildb.com/api/json/v1/1'
 
 export type Dish = {
   id: string
@@ -15,6 +24,7 @@ export type Dish = {
   steps: string[]
   source: string | null
   youtube: string | null
+  minutes: number | null
 }
 
 export type Stub = { id: string; name: string; thumb: string }
@@ -25,20 +35,22 @@ type Raw = Record<string, string | null>
 
 const inflight = new Map<string, Promise<unknown>>()
 
-function getJson<T>(path: string): Promise<T> {
-  let p = inflight.get(path)
+function getJson<T>(url: string): Promise<T> {
+  let p = inflight.get(url)
   if (!p) {
-    p = fetch(`${BASE}/${path}`).then((r) => {
+    p = fetch(url).then((r) => {
       if (!r.ok) throw new Error(`Recipe source returned ${r.status}`)
       return r.json()
     })
-    inflight.set(path, p)
-    p.catch(() => inflight.delete(path))
+    inflight.set(url, p)
+    p.catch(() => inflight.delete(url))
   }
   return p as Promise<T>
 }
 
-const LS = 'tweaked.dish.v2.'
+const LS = 'tweaked.dish.v3.'
+const MAX_CACHED = 400
+
 function readCached(id: string): Dish | null {
   try {
     const s = localStorage.getItem(LS + id)
@@ -47,12 +59,31 @@ function readCached(id: string): Dish | null {
     return null
   }
 }
+
 function writeCached(d: Dish) {
   try {
     localStorage.setItem(LS + d.id, JSON.stringify(d))
+    if (Math.random() < 0.05) pruneCache()
   } catch {
-    /* storage full or blocked: fine */
+    pruneCache(true)
   }
+}
+
+/** Keep the offline dish cache from growing without limit. */
+function pruneCache(force = false) {
+  try {
+    const keys = Object.keys(localStorage).filter((k) => k.startsWith(LS))
+    if (force || keys.length > MAX_CACHED) keys.slice(0, Math.max(0, keys.length - Math.floor(MAX_CACHED / 2))).forEach((k) => localStorage.removeItem(k))
+    Object.keys(localStorage).filter((k) => k.startsWith('tweaked.dish.v2.')).forEach((k) => localStorage.removeItem(k))
+  } catch {
+    /* storage unavailable: fine */
+  }
+}
+
+/** Thumbnail URL at a sensible size (TheMealDB serves /small /medium /large variants). */
+export function thumbUrl(d: Pick<Dish, 'thumb'>, size: 'small' | 'medium' | 'large'): string {
+  if (!d.thumb) return ''
+  return d.thumb.includes('themealdb.com') ? `${d.thumb}/${size}` : d.thumb
 }
 
 // ---------- parsing ----------
@@ -73,7 +104,7 @@ export function cleanSteps(text: string): string[] {
   return out
 }
 
-function toDish(m: Raw): Dish {
+function mealToDish(m: Raw): Dish {
   const ingredients: Dish['ingredients'] = []
   for (let i = 1; i <= 20; i++) {
     const name = (m[`strIngredient${i}`] ?? '').trim()
@@ -91,6 +122,74 @@ function toDish(m: Raw): Dish {
     steps: cleanSteps(m.strInstructions ?? ''),
     source: m.strSource || null,
     youtube: m.strYoutube || null,
+    minutes: null,
+  }
+}
+
+type DummyRaw = {
+  id: number
+  name: string
+  ingredients: string[]
+  instructions: string[]
+  prepTimeMinutes?: number
+  cookTimeMinutes?: number
+  cuisine?: string
+  tags?: string[]
+  image?: string
+  mealType?: string[]
+}
+
+/** DummyJSON has no category field: infer one so "chicken", "dessert" etc. still work. */
+function inferCategory(r: DummyRaw): string {
+  const text = `${r.name} ${(r.tags ?? []).join(' ')}`.toLowerCase()
+  const meal = (r.mealType ?? []).join(' ').toLowerCase()
+  if (/beverage|smoothie|cocktail|drink|lemonade|juice/.test(meal + ' ' + text)) return 'Drink'
+  if (meal.includes('dessert') || /cake|cookie|pie|pudding|brownie|ice cream|tart/.test(text)) return 'Dessert'
+  if (meal.includes('breakfast')) return 'Breakfast'
+  if (/pasta|spaghetti|noodle|lasagna|fettuccine|ramen/.test(text)) return 'Pasta'
+  if (/chicken/.test(text)) return 'Chicken'
+  if (/beef|steak|pork|lamb|bacon|sausage/.test(text)) return 'Beef'
+  if (/shrimp|prawn|salmon|fish|tuna|seafood|crab|cod/.test(text)) return 'Seafood'
+  if (/vegetarian|vegan|tofu|salad|veggie|lentil/.test(text)) return 'Vegetarian'
+  if (meal.includes('side') || meal.includes('appetizer') || meal.includes('snack')) return 'Side'
+  return 'Miscellaneous'
+}
+
+function dummyToDish(r: DummyRaw): Dish {
+  const known = cuisineOf(r.cuisine)
+  return {
+    id: `dj-${r.id}`,
+    name: r.name.trim(),
+    thumb: r.image ?? '',
+    category: inferCategory(r),
+    cuisine: known?.label ?? r.cuisine ?? '',
+    cuisineId: known?.id ?? null,
+    ingredients: r.ingredients.map((name) => ({ name: name.trim(), measure: '' })),
+    steps: r.instructions.map((s) => s.trim()).filter(Boolean),
+    source: `${DUMMY}/${r.id}`,
+    youtube: null,
+    minutes: (r.prepTimeMinutes ?? 0) + (r.cookTimeMinutes ?? 0) || null,
+  }
+}
+
+function drinkToDish(m: Raw): Dish {
+  const ingredients: Dish['ingredients'] = []
+  for (let i = 1; i <= 15; i++) {
+    const name = (m[`strIngredient${i}`] ?? '').trim()
+    if (name) ingredients.push({ name, measure: (m[`strMeasure${i}`] ?? '').trim() })
+  }
+  return {
+    id: `cd-${m.idDrink}`,
+    name: String(m.strDrink).trim(),
+    thumb: String(m.strDrinkThumb ?? ''),
+    category: 'Drink',
+    cuisine: 'Drinks',
+    cuisineId: null,
+    ingredients,
+    steps: cleanSteps(m.strInstructions ?? ''),
+    source: `https://www.thecocktaildb.com/drink/${m.idDrink}`,
+    youtube: null,
+    minutes: null,
   }
 }
 
@@ -99,11 +198,18 @@ function toDish(m: Raw): Dish {
 export async function lookup(id: string): Promise<Dish | null> {
   const hit = readCached(id)
   if (hit) return hit
-  const res = await getJson<{ meals: Raw[] | null }>(`lookup.php?i=${encodeURIComponent(id)}`)
-  const m = res.meals?.[0]
-  if (!m) return null
-  const d = toDish(m)
-  writeCached(d)
+  let d: Dish | null
+  if (id.startsWith('dj-')) {
+    const r = await getJson<DummyRaw>(`${DUMMY}/${id.slice(3)}`)
+    d = r?.name ? dummyToDish(r) : null
+  } else if (id.startsWith('cd-')) {
+    const res = await getJson<{ drinks: Raw[] | null }>(`${DRINK}/lookup.php?i=${id.slice(3)}`)
+    d = res.drinks?.[0] ? drinkToDish(res.drinks[0]) : null
+  } else {
+    const res = await getJson<{ meals: Raw[] | null }>(`${MEAL}/lookup.php?i=${encodeURIComponent(id)}`)
+    d = res.meals?.[0] ? mealToDish(res.meals[0]) : null
+  }
+  if (d) writeCached(d)
   return d
 }
 
@@ -120,40 +226,69 @@ export async function lookupMany(ids: string[], concurrency = 8): Promise<Dish[]
   return out.filter((d): d is Dish => d !== null)
 }
 
-function stubs(res: { meals: Raw[] | null }): Stub[] {
+function mealStubs(res: { meals: Raw[] | null }): Stub[] {
   return (res.meals ?? []).map((m) => ({ id: String(m.idMeal), name: String(m.strMeal), thumb: String(m.strMealThumb ?? '') }))
 }
 
 export async function listByCuisine(c: Cuisine): Promise<Stub[]> {
   const all = await Promise.all(
-    c.areas.map((a) => getJson<{ meals: Raw[] | null }>(`filter.php?a=${encodeURIComponent(a)}`).then(stubs).catch(() => [])),
+    c.areas.map((a) => getJson<{ meals: Raw[] | null }>(`${MEAL}/filter.php?a=${encodeURIComponent(a)}`).then(mealStubs).catch(() => [])),
   )
   const seen = new Set<string>()
   return all.flat().filter((s) => (seen.has(s.id) ? false : (seen.add(s.id), true)))
 }
 
 export async function listByCategory(cat: string): Promise<Stub[]> {
-  return getJson<{ meals: Raw[] | null }>(`filter.php?c=${encodeURIComponent(cat)}`).then(stubs).catch(() => [])
+  if (cat === 'Drink') {
+    const res = await getJson<{ drinks: Raw[] | null }>(`${DRINK}/filter.php?a=Non_Alcoholic`).catch(() => ({ drinks: null }))
+    return (res.drinks ?? []).map((m) => ({ id: `cd-${m.idDrink}`, name: String(m.strDrink), thumb: String(m.strDrinkThumb ?? '') }))
+  }
+  return getJson<{ meals: Raw[] | null }>(`${MEAL}/filter.php?c=${encodeURIComponent(cat)}`).then(mealStubs).catch(() => [])
+}
+
+let dummyAllPromise: Promise<Dish[]> | null = null
+/** All 50 DummyJSON recipes in one request. Resolves to [] if the source is unreachable. */
+export function dummyAll(): Promise<Dish[]> {
+  if (!dummyAllPromise) {
+    dummyAllPromise = getJson<{ recipes: DummyRaw[] }>(`${DUMMY}?limit=0`)
+      .then((r) => {
+        const dishes = r.recipes.map(dummyToDish)
+        dishes.forEach(writeCached)
+        return dishes
+      })
+      .catch(() => {
+        dummyAllPromise = null
+        return []
+      })
+  }
+  return dummyAllPromise
 }
 
 export async function searchDishes(q: string): Promise<Dish[]> {
-  const res = await getJson<{ meals: Raw[] | null }>(`search.php?s=${encodeURIComponent(q.trim())}`)
-  const dishes = (res.meals ?? []).map(toDish)
-  dishes.forEach(writeCached)
+  const term = q.trim().toLowerCase()
+  const [meals, dummy] = await Promise.all([
+    getJson<{ meals: Raw[] | null }>(`${MEAL}/search.php?s=${encodeURIComponent(term)}`)
+      .then((r) => (r.meals ?? []).map(mealToDish))
+      .catch(() => [] as Dish[]),
+    dummyAll().then((all) => all.filter((d) => `${d.name} ${d.cuisine} ${d.category} ${d.ingredients.map((i) => i.name).join(' ')}`.toLowerCase().includes(term))),
+  ])
+  const dishes = [...dummy, ...meals]
+  meals.forEach(writeCached)
   return dishes
 }
 
 export async function randomDishes(n: number): Promise<Dish[]> {
   const got = await Promise.all(
     Array.from({ length: n }, () =>
-      fetch(`${BASE}/random.php`)
+      fetch(`${MEAL}/random.php`)
         .then((r) => r.json() as Promise<{ meals: Raw[] | null }>)
-        .then((r) => (r.meals?.[0] ? toDish(r.meals[0]) : null))
+        .then((r) => (r.meals?.[0] ? mealToDish(r.meals[0]) : null))
         .catch(() => null),
     ),
   )
+  const extra = (await dummyAll()).sort(() => Math.random() - 0.5).slice(0, Math.max(4, Math.floor(n / 3)))
   const seen = new Set<string>()
-  return got.filter((d): d is Dish => d !== null && (seen.has(d.id) ? false : (seen.add(d.id), true)))
+  return [...got.filter((d): d is Dish => d !== null), ...extra].filter((d) => (seen.has(d.id) ? false : (seen.add(d.id), true)))
 }
 
 // ---------- "not overly fancy" + preferences ----------
@@ -173,7 +308,20 @@ export function conflicts(d: Dish, avoid: string[]): boolean {
 }
 
 export function dishUrl(d: Dish): string {
+  if (d.id.startsWith('dj-')) return `${DUMMY}/${d.id.slice(3)}`
+  if (d.id.startsWith('cd-')) return `https://www.thecocktaildb.com/drink/${d.id.slice(3)}`
   return `https://www.themealdb.com/meal/${d.id}`
+}
+
+/** Which dish id (if any) a saved recipe's source link points at. */
+export function dishIdFromUrl(url: string | null): string | null {
+  if (!url) return null
+  const meal = url.match(/themealdb\.com\/meal\/(\d+)/)
+  if (meal) return meal[1]
+  const dummy = url.match(/dummyjson\.com\/recipes\/(\d+)/)
+  if (dummy) return `dj-${dummy[1]}`
+  const drink = url.match(/thecocktaildb\.com\/drink\/(\d+)/)
+  return drink ? `cd-${drink[1]}` : null
 }
 
 const UNIT_ALIASES: Record<string, string> = {
@@ -248,7 +396,8 @@ const topKeys = (r: Record<string, number>, n: number) =>
   Object.entries(r).sort((a, b) => b[1] - a[1]).slice(0, n).map(([k]) => k)
 
 const DEFAULT_KINDS = ['chicken', 'pasta', 'breakfast']
-const EXPLORE = ['thai', 'japanese', 'mexican', 'greek', 'indian', 'spanish', 'vietnamese', 'italian', 'turkish', 'french', 'american', 'moroccan']
+const EXPLORE = ['thai', 'japanese', 'mexican', 'greek', 'indian', 'spanish', 'vietnamese', 'italian', 'turkish', 'korean', 'lebanese', 'pakistani', 'moroccan']
+const ALL_CATEGORIES = KINDS.flatMap((k) => k.categories as readonly string[])
 
 export async function buildFeed(prefs: Preferences, history: History, seed: number): Promise<Section[]> {
   const rnd = rngFrom(seed)
@@ -258,7 +407,12 @@ export async function buildFeed(prefs: Preferences, history: History, seed: numb
   // Who and what to sample from: stated taste first, then what the user actually cooks.
   const cuisineIds = shuffled([...new Set([...prefs.cuisines, ...topKeys(history.cuisines, 3)])], rnd).slice(0, 4)
   const catNames = shuffled(
-    [...new Set([...kindCats(prefs.kinds.length ? prefs.kinds : DEFAULT_KINDS), ...topKeys(history.categories, 2).map((c) => KINDS.flatMap((k) => k.categories as readonly string[]).find((x) => x.toLowerCase() === c) ?? '')])].filter(Boolean),
+    [
+      ...new Set([
+        ...kindCats(prefs.kinds.length ? prefs.kinds : DEFAULT_KINDS),
+        ...topKeys(history.categories, 2).map((c) => ALL_CATEGORIES.find((x) => x.toLowerCase() === c) ?? ''),
+      ]),
+    ].filter(Boolean),
     rnd,
   ).slice(0, 3)
   const exploreId = shuffled(EXPLORE.filter((id) => !prefs.cuisines.includes(id) && !(id in history.cuisines)), rnd)[0]
@@ -266,11 +420,12 @@ export async function buildFeed(prefs: Preferences, history: History, seed: numb
   const cuisines = cuisineIds.map((id) => CUISINES.find((c) => c.id === id)).filter((c): c is Cuisine => Boolean(c))
   const explore = CUISINES.find((c) => c.id === exploreId)
 
-  const [cuisineLists, catLists, sweetList, exploreList] = await Promise.all([
+  const [cuisineLists, catLists, sweetList, exploreList, dummy] = await Promise.all([
     Promise.all(cuisines.map((c) => listByCuisine(c))),
     Promise.all(catNames.map((c) => listByCategory(c))),
     listByCategory('Dessert'),
     explore ? listByCuisine(explore) : Promise.resolve([] as Stub[]),
+    dummyAll(),
   ])
 
   const pick = (list: Stub[], n: number) => shuffled(list.filter((s) => !history.savedIds.has(s.id)), rnd).slice(0, n)
@@ -281,8 +436,10 @@ export async function buildFeed(prefs: Preferences, history: History, seed: numb
   add(sweetList, 6)
   add(exploreList, 7)
 
-  const all = await lookupMany([...ids])
-  const ok = all.filter((d) => isSimple(d, prefs.effort) && !conflicts(d, prefs.avoid) && !history.savedIds.has(d.id))
+  const fromMeals = await lookupMany([...ids])
+  // The backup sources always join the pool; if the main one returned little, they carry the feed.
+  const pool = [...fromMeals, ...dummy]
+  const ok = pool.filter((d) => isSimple(d, prefs.effort) && !conflicts(d, prefs.avoid) && !history.savedIds.has(d.id))
 
   const maxC = Math.max(1, ...Object.values(history.cuisines))
   const maxK = Math.max(1, ...Object.values(history.categories))
@@ -306,16 +463,23 @@ export async function buildFeed(prefs: Preferences, history: History, seed: numb
   const push = (id: string, title: string, subtitle: string, dishes: Dish[]) => {
     if (dishes.length >= 2) sections.push({ id, title, subtitle, dishes })
   }
+  const solid = scored.filter((d) => d.category !== 'Drink')
 
-  push('picked', 'Picked for you', 'Based on your taste and what you cook', take(scored, 10))
-  push('few', 'Short shopping list', 'Six ingredients or fewer', take(scored.filter((d) => d.ingredients.length <= 6), 8))
+  push('picked', 'Picked for you', 'Based on your taste and what you cook', take(solid, 10))
+  push('few', 'Short shopping list', 'Six ingredients or fewer', take(solid.filter((d) => d.ingredients.length <= 6), 8))
+  push('quick', 'Quick to cook', 'Ready in 30 minutes or less', take(solid.filter((d) => d.minutes !== null && d.minutes <= 30), 8))
   for (const c of cuisines.slice(0, 2)) {
-    push(`c-${c.id}`, `${c.flag} ${c.label} favourites`, 'Home-style, nothing fancy', take(scored.filter((d) => d.cuisineId === c.id), 8))
+    push(`c-${c.id}`, `${c.flag} ${c.label} favourites`, 'Home-style, nothing fancy', take(solid.filter((d) => d.cuisineId === c.id), 8))
   }
-  push('sweet', '🥐 Pastries & sweets', 'For when you want something nice', take(scored.filter((d) => d.category === 'Dessert'), 8))
-  if (explore) push('explore', `Try something new: ${explore.flag} ${explore.label}`, 'A little outside your usual', take(scored.filter((d) => d.cuisineId === explore.id), 8))
-  for (const cat of catNames) {
-    push(`k-${cat}`, `More ${cat.toLowerCase()} ideas`, 'Easy to start tonight', take(scored.filter((d) => d.category === cat), 8))
+  push('sweet', '🥐 Pastries & sweets', 'For when you want something nice', take(solid.filter((d) => d.category === 'Dessert'), 8))
+  if (explore) push('explore', `Try something new: ${explore.flag} ${explore.label}`, 'A little outside your usual', take(solid.filter((d) => d.cuisineId === explore.id), 8))
+  for (const cat of catNames.filter((c) => c !== 'Drink')) {
+    push(`k-${cat}`, `More ${cat.toLowerCase()} ideas`, 'Easy to start tonight', take(solid.filter((d) => d.category === cat), 8))
   }
+
+  // Drinks: always offered as a light extra, non-alcoholic unless you did not opt out of alcohol.
+  const drinkStubs = pick(await listByCategory('Drink'), 8)
+  const drinks = (await lookupMany(drinkStubs.map((s) => s.id))).filter((d) => isSimple(d, prefs.effort) && !conflicts(d, prefs.avoid))
+  push('drinks', '🥤 Drinks & coolers', 'Refreshing, no alcohol', take(drinks, 8))
   return sections
 }

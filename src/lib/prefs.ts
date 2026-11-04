@@ -32,6 +32,9 @@ export const CUISINES = [
   { id: 'brazilian', label: 'Brazilian', flag: '🇧🇷', areas: ['Brazil', 'Brazilian'] },
   { id: 'cambodian', label: 'Cambodian', flag: '🇰🇭', areas: ['Cambodia', 'Cambodian'] },
   { id: 'moroccan', label: 'Moroccan', flag: '🇲🇦', areas: ['Moroccan', 'Morocco'] },
+  { id: 'korean', label: 'Korean', flag: '🇰🇷', areas: ['Korean', 'South Korea'] },
+  { id: 'pakistani', label: 'Pakistani', flag: '🇵🇰', areas: ['Pakistani', 'Pakistan'] },
+  { id: 'lebanese', label: 'Lebanese', flag: '🇱🇧', areas: ['Lebanese', 'Lebanon'] },
 ] as const
 
 export type Cuisine = (typeof CUISINES)[number]
@@ -53,6 +56,7 @@ export const KINDS = [
   { id: 'breakfast', label: 'Breakfast', emoji: '🍳', categories: ['Breakfast'] },
   { id: 'sweet', label: 'Pastries & sweets', emoji: '🥐', categories: ['Dessert'] },
   { id: 'snacks', label: 'Snacks & sides', emoji: '🥟', categories: ['Side', 'Starter'] },
+  { id: 'drinks', label: 'Drinks & coolers', emoji: '🥤', categories: ['Drink'] },
 ] as const
 
 export const AVOID = [

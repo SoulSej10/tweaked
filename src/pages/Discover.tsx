@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { DishCard } from '../components/DishCard'
 import { Shell } from '../components/Shell'
-import { conflicts, isSimple, listByCategory, listByCuisine, lookupMany, randomDishes, searchDishes, type Dish } from '../lib/discover'
+import { conflicts, dummyAll, isSimple, listByCategory, listByCuisine, lookupMany, randomDishes, searchDishes, type Dish } from '../lib/discover'
 import { useAsync } from '../lib/hooks'
 import { CUISINES, KINDS } from '../lib/prefs'
 import { usePrefs } from '../prefs'
@@ -22,12 +22,15 @@ export default function Discover() {
     else if (pick.type === 'cuisine') {
       const c = CUISINES.find((x) => x.id === pick.id)
       const stubs = c ? await listByCuisine(c) : []
-      list = await lookupMany(stubs.slice(0, 30).map((s) => s.id))
+      const [meals, extra] = await Promise.all([lookupMany(stubs.slice(0, 30).map((s) => s.id)), dummyAll()])
+      list = [...extra.filter((d) => d.cuisineId === pick.id), ...meals]
     } else if (pick.type === 'kind') {
       const k = KINDS.find((x) => x.id === pick.id)
       const lists = await Promise.all((k?.categories ?? []).map((c) => listByCategory(c)))
       const ids = lists.flat().sort(() => Math.random() - 0.5).slice(0, 24).map((s) => s.id)
-      list = await lookupMany(ids)
+      const cats = new Set<string>(k?.categories ?? [])
+      const [meals, extra] = await Promise.all([lookupMany(ids), dummyAll()])
+      list = [...extra.filter((d) => cats.has(d.category)), ...meals]
     } else list = await randomDishes(16)
     if (simple) list = list.filter((d) => isSimple(d, prefs.effort))
     return list.filter((d) => !conflicts(d, prefs.avoid))

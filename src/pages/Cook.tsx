@@ -1,12 +1,12 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { getRecipe, logCook } from '../lib/api'
-import { useAsync, useWakeLock } from '../lib/hooks'
+import { useAsync, useSettings, useWakeLock } from '../lib/hooks'
 import { formatDuration, formatIngredient } from '../lib/parse'
 import { uploadDishPhoto } from '../lib/photo'
 import { useDictation } from '../lib/speech'
 
-function Timer({ seconds }: { seconds: number }) {
+function Timer({ seconds, vibrate }: { seconds: number; vibrate: boolean }) {
   const [left, setLeft] = useState(seconds)
   const [running, setRunning] = useState(false)
 
@@ -18,8 +18,8 @@ function Timer({ seconds }: { seconds: number }) {
 
   const finished = left === 0
   useEffect(() => {
-    if (finished && running && 'vibrate' in navigator) navigator.vibrate?.([300, 150, 300])
-  }, [finished, running])
+    if (finished && running && vibrate && 'vibrate' in navigator) navigator.vibrate?.([300, 150, 300])
+  }, [finished, running, vibrate])
 
   return (
     <div className={`timer ${finished ? 'done' : ''}`}>
@@ -43,9 +43,10 @@ export default function Cook() {
   const [err, setErr] = useState<string | null>(null)
   const touchX = useRef<number | null>(null)
 
-  useWakeLock(!loading && !finished)
+  const [settings] = useSettings()
+  useWakeLock(!loading && !finished && settings.keepAwake)
   const [photo, setPhoto] = useState<File | null>(null)
-  const dictation = useDictation(useCallback((t: string) => setNote((n) => (n ? `${n} ${t}` : t)), []))
+  const dictation = useDictation(useCallback((t: string) => setNote((n) => (n ? `${n} ${t}` : t)), []), settings.voiceLang)
 
   if (loading) return <main className="cook"><p className="muted pad">Loading…</p></main>
   if (error || !data) return <main className="cook"><p className="error pad">{error ?? 'Not found'}</p></main>
@@ -165,7 +166,7 @@ export default function Cook() {
       ) : (
         <section className="step">
           <p className="step-text">{step.text}</p>
-          {step.timer_seconds && <Timer key={i} seconds={step.timer_seconds} />}
+          {step.timer_seconds && <Timer key={i} seconds={step.timer_seconds} vibrate={settings.vibrate} />}
         </section>
       )}
 

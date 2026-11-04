@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { Shell } from '../components/Shell'
 import { listRecipes } from '../lib/api'
 import { dishEmoji, tileIndex } from '../lib/emoji'
@@ -22,7 +22,8 @@ export default function Library() {
   const [q, setQ] = useState('')
   const [filter, setFilter] = useState<Filter>('all')
   const [tag, setTag] = useState<string | null>(null)
-  const [pantry, setPantry] = useState(false)
+  const [params] = useSearchParams()
+  const [pantry, setPantry] = useState(params.get('pantry') === '1')
   const nav = useNavigate()
   const [now] = useState(() => Date.now())
 

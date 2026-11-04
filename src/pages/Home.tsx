@@ -1,13 +1,14 @@
 import { useMemo, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../auth'
 import { DishCard, DishSkeletons } from '../components/DishCard'
 import { Shell } from '../components/Shell'
 import { listRecentCooks, listRecipes } from '../lib/api'
-import { buildFeed, type Dish } from '../lib/discover'
+import { buildFeed, thumbUrl, type Dish } from '../lib/discover'
 import { dishEmoji, tileIndex } from '../lib/emoji'
 import { historyFrom } from '../lib/history'
 import { useAsync } from '../lib/hooks'
+import { useShopping } from '../lib/shopping'
 import { usePrefs } from '../prefs'
 
 function greeting(hour: number) {
@@ -36,6 +37,8 @@ export default function Home() {
   const { prefs } = usePrefs()
   const recipes = useAsync(listRecipes, [])
   const cooks = useAsync(() => listRecentCooks(60), [])
+  const shopping = useShopping().filter((i) => !i.done).length
+  const nav = useNavigate()
   const [bump, setBump] = useState(0)
   const [now] = useState(() => Date.now())
 
@@ -73,16 +76,23 @@ export default function Home() {
         <div className="stat"><b>{tweaks}</b><span>tweaks logged</span></div>
       </section>
 
+      <nav className="quick" aria-label="Quick actions">
+        <Link to="/shopping" className="qa"><span aria-hidden>🛒</span><span>Shopping list</span>{shopping > 0 && <span className="badge">{shopping}</span>}</Link>
+        <Link to="/recipes?pantry=1" className="qa"><span aria-hidden>🥕</span><span>What can I make?</span></Link>
+        <button className="qa" onClick={() => (hero ? nav(`/dish/${hero.id}`) : setBump((b) => b + 1))}><span aria-hidden>🎲</span><span>Surprise me</span></button>
+        <Link to="/new" className="qa"><span aria-hidden>✍️</span><span>Add recipe</span></Link>
+      </nav>
+
       {hero ? (
         <section className="hero rise">
           <Link to={`/dish/${hero.id}`} className={`hero-img dthumb t${tileIndex(hero.name)}`}>
             <span className="demoji" aria-hidden>{dishEmoji(hero.name, [hero.category])}</span>
-            {hero.thumb && <img src={`${hero.thumb}/large`} alt="" onError={(e) => (e.currentTarget.style.display = 'none')} />}
+            {hero.thumb && <img src={thumbUrl(hero, 'large')} alt="" onError={(e) => (e.currentTarget.style.display = 'none')} />}
             <span className="hero-badge">Tonight's pick</span>
           </Link>
           <div className="hero-body">
             <h2>{hero.name}</h2>
-            <p className="muted">{hero.cuisine ? `${hero.cuisine} · ` : ''}{hero.ingredients.length} ingredients · {hero.steps.length} steps</p>
+            <p className="muted">{hero.cuisine ? `${hero.cuisine} · ` : ''}{hero.ingredients.length} ingredients · {hero.steps.length} steps{hero.minutes ? ` · ${hero.minutes} min` : ''}</p>
             <div className="row wrap">
               <Link className="btn primary" to={`/dish/${hero.id}`}>See the recipe</Link>
               <button className="btn" onClick={() => setBump((b) => b + 1)}>Not feeling it</button>

@@ -5,8 +5,10 @@ import '@fontsource-variable/nunito'
 import './index.css'
 import App from './App.tsx'
 import { applyTheme, loadTheme } from './lib/theme.ts'
+import { applyTextSize, loadSettings } from './lib/settings.ts'
 
 applyTheme(loadTheme())
+applyTextSize(loadSettings().textSize)
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>

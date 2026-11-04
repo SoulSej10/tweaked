@@ -1,9 +1,10 @@
 import { useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { createRecipe } from '../lib/api'
-import { dishToRecipe, lookup } from '../lib/discover'
+import { dishToRecipe, dishUrl, lookup, thumbUrl } from '../lib/discover'
 import { dishEmoji, tileIndex } from '../lib/emoji'
 import { useAsync } from '../lib/hooks'
+import { addItems } from '../lib/shopping'
 
 export default function DishPage() {
   const { id = '' } = useParams()
@@ -11,6 +12,7 @@ export default function DishPage() {
   const { data: dish, error, loading } = useAsync(() => lookup(id), [id])
   const [busy, setBusy] = useState<'save' | 'cook' | null>(null)
   const [err, setErr] = useState<string | null>(null)
+  const [added, setAdded] = useState<number | null>(null)
 
   if (loading) return <main className="page"><p className="muted pad">Loading…</p></main>
   if (error || !dish) return (
@@ -38,7 +40,7 @@ export default function DishPage() {
     <main className="page with-bar">
       <div className={`banner dthumb t${tileIndex(dish.name)}`}>
         <span className="demoji" aria-hidden>{dishEmoji(dish.name, [dish.category])}</span>
-        {dish.thumb && <img src={`${dish.thumb}/large`} alt={dish.name} onError={(e) => (e.currentTarget.style.display = 'none')} />}
+        {dish.thumb && <img src={thumbUrl(dish, 'large')} alt={dish.name} onError={(e) => (e.currentTarget.style.display = 'none')} />}
         <Link to="/discover" className="float-back" aria-label="Back">←</Link>
       </div>
 
@@ -49,6 +51,7 @@ export default function DishPage() {
           {dish.category && <span className="pill alt">{dish.category}</span>}
           <span className="pill">{dish.ingredients.length} ingredients</span>
           <span className="pill">{dish.steps.length} steps</span>
+          {dish.minutes && <span className="pill">{dish.minutes} min</span>}
         </p>
         <p className="muted small">Suggested from an open recipe collection. Save it, then change it however you like. Tweaked remembers every version.</p>
 
@@ -57,12 +60,17 @@ export default function DishPage() {
           {dish.ingredients.map((i, n) => <li key={n}><span>{i.name}</span><b>{i.measure}</b></li>)}
         </ul>
 
+        <div className="row" style={{ marginTop: 10 }}>
+          <button className="btn" onClick={() => setAdded(addItems(dish.ingredients.map((i) => `${i.measure} ${i.name}`.trim()), dish.name))}>🛒 Add to shopping list</button>
+          {added !== null && <Link to="/shopping" className="small">{added > 0 ? `Added ${added} · view list` : 'Already on your list · view'}</Link>}
+        </div>
+
         <h2>Steps</h2>
         <ol className="steps">{dish.steps.map((s, n) => <li key={n}>{s}</li>)}</ol>
 
         <p className="muted small">
           {dish.youtube && <><a href={dish.youtube} target="_blank" rel="noreferrer">Watch a video</a> · </>}
-          <a href={dish.source ?? `https://www.themealdb.com/meal/${dish.id}`} target="_blank" rel="noreferrer">Original source</a>
+          <a href={dish.source ?? dishUrl(dish)} target="_blank" rel="noreferrer">Original source</a>
         </p>
         {err && <p className="error" role="alert">{err}</p>}
       </section>

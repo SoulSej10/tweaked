@@ -41,11 +41,13 @@ export function PrefsProvider({ children }: { children: ReactNode }) {
   const save = useCallback(
     async (p: Preferences) => {
       if (!uid) return
-      const { error } = await supabase
+      const { data, error } = await supabase
         .from('profiles')
         .update({ preferences: p, onboarded_at: new Date().toISOString() })
         .eq('id', uid)
+        .select('id')
       if (error) throw new Error(error.message)
+      if (!data || data.length === 0) throw new Error('Could not find your profile. Sign out and back in, then try again.')
       setState({ prefs: p, loading: false, onboarded: true })
     },
     [uid],
