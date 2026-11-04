@@ -1,13 +1,13 @@
 :root {
-  --bg: #f7f3ea;
-  --surface: #fffdf8;
-  --ink: #232a1f;
-  --muted: #6b7060;
-  --line: #e4dfd0;
-  --accent: #3f5a3a;
+  --bg: #fff7ef;
+  --surface: #fffdfa;
+  --ink: #2d2321;
+  --muted: #7a6459;
+  --line: #f1dfd0;
+  --accent: #c4471d;
   --accent-ink: #ffffff;
-  --olive: #3f5a3a;
-  --mark: #fbe3a1;
+  --olive: #c4471d;
+  --mark: #ffe6a3;
   --danger: #b3261e;
   --radius: 14px;
   --serif: 'Fraunces Variable', Georgia, serif;
@@ -17,30 +17,30 @@
 
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme='light']) {
-    --bg: #141a12;
-    --surface: #1d251a;
-    --ink: #eef1e6;
-    --muted: #9aa28c;
-    --line: #2f3a2b;
-    --accent: #a9cf8f;
-    --accent-ink: #14200f;
-    --olive: #a9cf8f;
-    --mark: #5a4513;
+    --bg: #1f1614;
+    --surface: #2b1f1c;
+    --ink: #fbeee6;
+    --muted: #c4a99c;
+    --line: #46332d;
+    --accent: #ff9d76;
+    --accent-ink: #3a1408;
+    --olive: #ff9d76;
+    --mark: #5c4310;
     --danger: #f2877f;
     color-scheme: dark;
   }
 }
 
 :root[data-theme='dark'] {
-  --bg: #141a12;
-  --surface: #1d251a;
-  --ink: #eef1e6;
-  --muted: #9aa28c;
-  --line: #2f3a2b;
-  --accent: #a9cf8f;
-  --accent-ink: #14200f;
-  --olive: #a9cf8f;
-  --mark: #5a4513;
+  --bg: #1f1614;
+  --surface: #2b1f1c;
+  --ink: #fbeee6;
+  --muted: #c4a99c;
+  --line: #46332d;
+  --accent: #ff9d76;
+  --accent-ink: #3a1408;
+  --olive: #ff9d76;
+  --mark: #5c4310;
   --danger: #f2877f;
   color-scheme: dark;
 }
@@ -110,6 +110,8 @@ label.check, .check { flex-direction: row; align-items: center; gap: 8px; font-w
 .link.danger { color: var(--danger); margin-top: 2rem; }
 
 .search { display: flex; gap: 12px; align-items: center; padding: 0 16px; }
+.search input[type='search'] { flex: 1; min-width: 0; }
+.search .check { flex: none; white-space: nowrap; }
 .chips { display: flex; gap: 8px; overflow-x: auto; padding: 12px 16px; scrollbar-width: none; }
 .chip {
   flex: none; min-height: 40px; padding: 0 14px; border-radius: 999px; cursor: pointer;

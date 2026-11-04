@@ -52,3 +52,11 @@ describe('importCaption', () => {
     expect(out).toEqual({ title: 'Chicken Adobo', ingredients: '1 kg chicken', steps: 'Simmer' })
   })
 })
+
+describe('scaleAmount for whole items', () => {
+  it('rounds unitless counts to something you can actually cook', () => {
+    expect(scaleAmount('3', 1.25, '')).toBe('4')
+    expect(scaleAmount('1', 1.25, '')).toBe('1.5')
+    expect(scaleAmount('2', 1.25, 'cloves')).toBe('2.5')
+  })
+})

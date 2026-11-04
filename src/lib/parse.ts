@@ -34,10 +34,17 @@ function pretty(n: number): string {
 }
 
 /** Scale a quantity string. Non-numeric amounts (e.g. "to taste") are returned unchanged. */
-export function scaleAmount(amount: string, factor: number): string {
+export function scaleAmount(amount: string, factor: number, unit = ''): string {
   if (factor === 1) return amount
   const n = toNumber(amount)
-  return n === null ? amount : pretty(n * factor)
+  if (n === null) return amount
+  const v = n * factor
+  // Whole items ("3 bay leaves", "2 eggs") read oddly as 3.75: round to a sensible count.
+  if (!unit.trim()) {
+    if (v >= 3) return String(Math.round(v))
+    return pretty(Math.max(0.5, Math.round(v * 2) / 2))
+  }
+  return pretty(v)
 }
 
 export type UnitSystem = 'as-saved' | 'metric' | 'us'
@@ -52,7 +59,7 @@ const TO_METRIC: Record<string, [number, string]> = {
 function round(n: number): string {
   if (n >= 100) return String(Math.round(n / 5) * 5)
   if (n >= 10) return String(Math.round(n))
-  return String(Math.round(n * 10) / 10)
+  return String(Math.round(n * 2) / 2)
 }
 
 /** Convert one ingredient between US and metric. Anything not clearly convertible is left alone. */

@@ -106,7 +106,7 @@ export default function Detail() {
         {shown?.ingredients.length ? (
           <ul className="plain">
             {shown.ingredients.map((i, n) => (
-              <li key={n}>{formatIngredient(convertIngredient({ ...i, amount: scaleAmount(i.amount, factor) }, units))}</li>
+              <li key={n}>{formatIngredient(convertIngredient({ ...i, amount: scaleAmount(i.amount, factor, i.unit) }, units))}</li>
             ))}
           </ul>
         ) : <p className="muted">None yet. <Link to={`/recipe/${recipe.id}/edit`}>Add some</Link></p>}
