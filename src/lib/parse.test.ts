@@ -60,3 +60,16 @@ describe('scaleAmount for whole items', () => {
     expect(scaleAmount('2', 1.25, 'cloves')).toBe('2.5')
   })
 })
+
+import { measureToParts } from './discover'
+describe('measureToParts', () => {
+  it('splits amounts, units and notes without touching the name', () => {
+    expect(measureToParts('1 tbs')).toEqual({ amount: '1', unit: 'tbsp', note: '' })
+    expect(measureToParts('50ml/2fl oz')).toEqual({ amount: '50', unit: 'ml', note: '' })
+    expect(measureToParts('1/2 cup')).toEqual({ amount: '1/2', unit: 'cup', note: '' })
+    expect(measureToParts('8 ounces')).toEqual({ amount: '8', unit: 'oz', note: '' })
+    expect(measureToParts('Pinch')).toEqual({ amount: '', unit: '', note: 'Pinch' })
+    expect(measureToParts('2 large')).toEqual({ amount: '2', unit: '', note: 'large' })
+    expect(measureToParts('')).toEqual({ amount: '', unit: '', note: '' })
+  })
+})

@@ -1,5 +1,5 @@
 import { AVOID, CUISINES, KINDS, cuisineOf, type Cuisine, type Effort, type Preferences } from './prefs'
-import { parseIngredientLine, parseStepLine } from './parse'
+import { parseStepLine } from './parse'
 import type { Ingredient, Step } from './types'
 
 const BASE = 'https://www.themealdb.com/api/json/v1/1'
@@ -176,11 +176,27 @@ export function dishUrl(d: Dish): string {
   return `https://www.themealdb.com/meal/${d.id}`
 }
 
+const UNIT_ALIASES: Record<string, string> = {
+  tbs: 'tbsp', tbsp: 'tbsp', tablespoon: 'tbsp', tablespoons: 'tbsp', tblsp: 'tbsp',
+  tsp: 'tsp', teaspoon: 'tsp', teaspoons: 'tsp',
+  cup: 'cup', cups: 'cup', ounce: 'oz', ounces: 'oz', oz: 'oz', lb: 'lb', lbs: 'lb', pound: 'lb', pounds: 'lb',
+  g: 'g', gram: 'g', grams: 'g', kg: 'kg', ml: 'ml', l: 'l', litre: 'l', liter: 'l', clove: 'cloves', cloves: 'cloves',
+}
+
+/** "1 tbs" -> 1 tbsp, "50ml/2fl oz" -> 50 ml, "Pinch" -> note only. Never glued onto the name. */
+export function measureToParts(measure: string): Pick<Ingredient, 'amount' | 'unit' | 'note'> {
+  const m = measure.trim().split('/').length > 2 || /^\d+\s*\d*\/\d+/.test(measure.trim()) ? measure.trim() : measure.trim().split('/')[0]
+  const match = m.match(/^(\d+\s+\d+\/\d+|\d+\/\d+|\d+(?:[.,]\d+)?|[½¼¾])\s*([a-zA-Z]+)?\.?\s*(.*)$/)
+  if (!match) return { amount: '', unit: '', note: measure.trim() }
+  const [, amount, word = '', rest] = match
+  const unit = UNIT_ALIASES[word.toLowerCase()]
+  if (unit) return { amount: amount.replace(',', '.'), unit, note: rest.trim() }
+  // Not a unit ("1 large", "2 chopped"): keep the number, move the word into the note.
+  return { amount: amount.replace(',', '.'), unit: '', note: `${word} ${rest}`.trim() }
+}
+
 export function dishToRecipe(d: Dish) {
-  const ingredients: Ingredient[] = d.ingredients.map((i) => {
-    const parsed = parseIngredientLine(`${i.measure} ${i.name}`.trim())
-    return parsed ?? { name: i.name, amount: '', unit: '', note: i.measure }
-  })
+  const ingredients: Ingredient[] = d.ingredients.map((i) => ({ name: i.name, ...measureToParts(i.measure) }))
   const steps: Step[] = d.steps.map((s) => parseStepLine(s) ?? { text: s, timer_seconds: null })
   const tags = [...new Set([d.cuisineId ?? d.cuisine.toLowerCase(), d.category.toLowerCase()].filter(Boolean))]
   return {
