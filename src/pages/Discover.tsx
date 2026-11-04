@@ -25,6 +25,7 @@ export default function Discover() {
   const [simple, setSimple] = useState(true)
   const [spin, setSpin] = useState(0)
   const [shown, setShown] = useState(PAGE)
+  const [showHidden, setShowHidden] = useState(false)
 
   const term = useDebounced(q.trim(), 200)
   const webTerm = useDebounced(q.trim(), 600)
@@ -47,9 +48,14 @@ export default function Discover() {
     [browse.data, simple, prefs.effort, prefs.avoid],
   )
   // When searching, do not hide results behind "keep it simple": people asked for that dish by name.
-  const localList = useMemo(() => (local.data?.dishes ?? []).filter((d) => !conflicts(d, prefs.avoid)), [local.data, prefs.avoid])
-  const localIds = new Set(localList.map((d) => d.id))
-  const webList = (web.data?.dishes ?? []).filter((d) => !localIds.has(d.id) && !conflicts(d, prefs.avoid))
+  const allowed = (d: Dish) => showHidden || !conflicts(d, prefs.avoid)
+  const localAll = local.data?.dishes ?? []
+  const localList = useMemo(() => localAll.filter(allowed), [local.data, prefs.avoid, showHidden]) // eslint-disable-line react-hooks/exhaustive-deps
+  const localIds = new Set(localAll.map((d) => d.id))
+  const webAll = (web.data?.dishes ?? []).filter((d) => !localIds.has(d.id))
+  const webList = webAll.filter(allowed)
+  // Dishes the user's own "skip" choices are hiding; say so instead of claiming nothing exists.
+  const hiddenCount = localAll.length + webAll.length - localList.length - webList.length
 
   const choose = (p: Browse) => {
     setPick(p)
@@ -58,7 +64,7 @@ export default function Discover() {
   }
 
   const webPending = searching && !webReady
-  const nothing = searching && localReady && webReady && localList.length === 0 && webList.length === 0
+  const nothing = searching && localReady && webReady && localList.length === 0 && webList.length === 0 && hiddenCount === 0
   const list = browseList.slice(0, shown)
   const googleUrl = `https://www.google.com/search?q=${encodeURIComponent(`${term} recipe`)}`
 
@@ -70,7 +76,7 @@ export default function Discover() {
       </header>
 
       <form className="searchbar" onSubmit={(e) => e.preventDefault()}>
-        <input type="search" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search any dish: bicol express, adobo, cake…" aria-label="Search dishes" enterKeyHint="search" />
+        <input type="search" value={q} onChange={(e) => { setQ(e.target.value); setShowHidden(false) }} placeholder="Search any dish: bicol express, adobo, cake…" aria-label="Search dishes" enterKeyHint="search" />
       </form>
 
       {!searching && (
@@ -109,6 +115,12 @@ export default function Discover() {
             </>
           )}
           {webPending && <p className="muted small pad status">Searching the web for more…</p>}
+          {hiddenCount > 0 && !showHidden && localReady && webReady && (
+            <p className="pad status muted small">
+              {hiddenCount} {hiddenCount === 1 ? 'dish is' : 'dishes are'} hidden because of what you skip ({prefs.avoid.join(', ')}).{' '}
+              <button className="link inline" onClick={() => setShowHidden(true)}>Show {hiddenCount === 1 ? 'it' : 'them'} anyway</button>
+            </p>
+          )}
           {nothing && (
             <div className="empty">
               <p className="nudge-emoji" aria-hidden>🔎</p>

@@ -286,9 +286,14 @@ async function wikiDish(title: string): Promise<Dish | null> {
 /** Search Wikibooks Cookbook for recipes matching the words. Returns [] on any failure. */
 export async function searchWeb(q: string): Promise<Dish[]> {
   try {
-    const url = `${WIKI}?${new URLSearchParams({ action: 'query', list: 'search', srsearch: q.trim(), srnamespace: '102', srlimit: '6', format: 'json', origin: '*' })}`
-    const res = await getJson<{ query: { search: { title: string }[] } }>(url)
-    const dishes = await Promise.all(res.query.search.map((r) => wikiDish(r.title).catch(() => null)))
+    // Search the words as typed, and as a prefix ("lechon" also finds "Lechon Paksiw").
+    const find = (srsearch: string) =>
+      getJson<{ query: { search: { title: string }[] } }>(`${WIKI}?${new URLSearchParams({ action: 'query', list: 'search', srsearch, srnamespace: '102', srlimit: '6', format: 'json', origin: '*' })}`)
+        .then((r) => r.query.search.map((s) => s.title))
+        .catch(() => [] as string[])
+    const term = q.trim()
+    const titles = [...new Set((await Promise.all([find(term), find(`${term}*`)])).flat())].filter((t) => !/^Cookbook:Cuisine of/i.test(t)).slice(0, 8)
+    const dishes = await Promise.all(titles.map((t) => wikiDish(t).catch(() => null)))
     const out = dishes.filter((d): d is Dish => d !== null)
     out.forEach((d) => catalogIndex.set(d.id, d))
     out.forEach(writeCached)
