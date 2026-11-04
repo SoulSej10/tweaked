@@ -218,6 +218,8 @@ export function importCaption(raw: string): CaptionImport {
   const looksLikeIngredient = (l: string) => !numberedStep(l) && /^(?:[-*•▪✔✅👉]|️)*\s*(\d|[½¼¾⅓⅔])/u.test(l) && l.length < 70
   for (const [idx, l] of lines.entries()) {
     if (idx === 0 && title) continue
+    // Sharing sends the title and the text separately, so the title often repeats as a line of its own.
+    if (title && idx < 3 && tidy(titleSegment(l)).toLowerCase() === title.toLowerCase()) continue
     if (isIngHead(l)) { mode = 'ing'; continue }
     if (isStepHead(l)) { mode = 'step'; continue }
     const text = l.replace(/^[^\p{L}\p{N}½¼¾⅓⅔]+/u, '').trim()

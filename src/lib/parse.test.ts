@@ -112,3 +112,12 @@ Follow for more recipes!`
     expect(out.ingredients).toBe('2 cups rice')
   })
 })
+
+describe('importCaption from a share (title sent twice)', () => {
+  it('does not turn the repeated title into a step', () => {
+    const out = importCaption('Bicol Express\n🔥 BICOL EXPRESS 🌶️\nSangkap:\n1 kg pork\nParaan:\nIgisa ang bawang')
+    expect(out.title).toBe('Bicol Express')
+    expect(out.steps).toBe('Igisa ang bawang')
+    expect(out.ingredients).toBe('1 kg pork')
+  })
+})
