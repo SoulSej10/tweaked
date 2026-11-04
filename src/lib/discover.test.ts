@@ -41,6 +41,8 @@ describe('dish filters', () => {
   it('always keeps alcohol off the drinks shelf', () => {
     const drink = dish({ category: 'Drink', ingredients: [{ name: 'White Rum', measure: '2 oz' }, { name: 'Lime', measure: '1' }] })
     expect(conflicts(drink, [])).toBe(true)
+    expect(conflicts(dish({ category: 'Drink', ingredients: [{ name: 'Cachaça', measure: '2 oz' }, { name: 'Lime', measure: '1' }] }), [])).toBe(true)
+    expect(conflicts(dish({ category: 'Drink', ingredients: [{ name: 'Fresh ginger', measure: '1 tsp' }] }), [])).toBe(false)
     expect(conflicts(dish({ category: 'Drink', ingredients: [{ name: 'Mango', measure: '1' }, { name: 'Yogurt', measure: '1 cup' }] }), [])).toBe(false)
   })
 })

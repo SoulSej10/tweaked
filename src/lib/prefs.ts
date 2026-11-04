@@ -65,7 +65,7 @@ export const AVOID = [
   { id: 'seafood', label: 'Seafood', emoji: '🐟', words: ['fish', 'prawn', 'shrimp', 'salmon', 'tuna', 'squid', 'crab', 'anchov', 'mussel', 'clam', 'cod', 'oyster', 'lobster', 'haddock', 'mackerel'] },
   { id: 'nuts', label: 'Nuts', emoji: '🥜', words: ['peanut', 'almond', 'cashew', 'pecan', 'walnut', 'pistachio', 'hazelnut'] },
   { id: 'dairy', label: 'Dairy', emoji: '🥛', words: ['milk', 'cheese', 'butter', 'cream', 'yogh', 'yogurt', 'ghee'] },
-  { id: 'alcohol', label: 'Alcohol', emoji: '🍷', words: ['wine', 'beer', 'rum', 'brandy', 'whisky', 'whiskey', 'sake', 'vodka', 'liqueur'] },
+  { id: 'alcohol', label: 'Alcohol', emoji: '🍷', words: ['wine', 'beer', 'rum', 'brandy', 'whisky', 'whiskey', 'sake', 'vodka', 'liqueur', 'liquor', 'cacha', 'tequila', 'mezcal', 'gin', 'bourbon', 'schnapps', 'amaretto', 'kahlua', 'champagne', 'prosecco', 'cognac', 'absinthe', 'vermouth', 'sherry', 'bitters'] },
   { id: 'spicy', label: 'Very spicy', emoji: '🌶️', words: ['chilli', 'chili', 'cayenne', 'jalapeno', 'habanero', 'scotch bonnet', 'sriracha'] },
 ] as const
 
