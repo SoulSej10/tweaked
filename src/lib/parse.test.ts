@@ -49,7 +49,7 @@ describe('convertIngredient', () => {
 describe('importCaption', () => {
   it('finds title, ingredients and steps', () => {
     const out = importCaption('Chicken Adobo\nIngredients:\n1 kg chicken\nSteps:\nSimmer')
-    expect(out).toEqual({ title: 'Chicken Adobo', ingredients: '1 kg chicken', steps: 'Simmer' })
+    expect(out).toMatchObject({ title: 'Chicken Adobo', ingredients: '1 kg chicken', steps: 'Simmer' })
   })
 })
 
@@ -71,5 +71,44 @@ describe('measureToParts', () => {
     expect(measureToParts('Pinch')).toEqual({ amount: '', unit: '', note: 'Pinch' })
     expect(measureToParts('2 large')).toEqual({ amount: '2', unit: '', note: 'large' })
     expect(measureToParts('')).toEqual({ amount: '', unit: '', note: '' })
+  })
+})
+
+import { detectSource } from './parse'
+describe('detectSource', () => {
+  it('finds links and tells social reels from web pages', () => {
+    expect(detectSource('try this! https://www.facebook.com/reel/12345.')).toEqual({ url: 'https://www.facebook.com/reel/12345', type: 'reel' })
+    expect(detectSource('https://fb.watch/abc/')).toMatchObject({ type: 'reel' })
+    expect(detectSource('see https://www.instagram.com/reel/xyz')).toMatchObject({ type: 'reel' })
+    expect(detectSource('https://example.com/pancit')).toEqual({ url: 'https://example.com/pancit', type: 'link' })
+    expect(detectSource('no link here')).toEqual({ url: null, type: null })
+  })
+})
+
+describe('importCaption on real-world captions', () => {
+  const caption = `🔥 BICOL EXPRESS 🌶️ super sarap!
+Sangkap:
+✔️ 1/2 kg pork belly, cubed
+✔️ 1 cup gata (coconut milk)
+✔️ 5 pcs siling labuyo
+Paraan ng pagluluto:
+1. Igisa ang bawang at sibuyas
+2. Ilagay ang baboy at lutuin ng 20 minutes
+#bicolexpress #filipinofood
+Watch: https://www.facebook.com/reel/987654321
+Follow for more recipes!`
+  it('sorts Filipino headings, emoji bullets, hashtags and the link', () => {
+    const out = importCaption(caption)
+    expect(out.title).toBe('BICOL EXPRESS')
+    expect(out.ingredients.split('\n')).toEqual(['1/2 kg pork belly, cubed', '1 cup gata (coconut milk)', '5 pcs siling labuyo'])
+    expect(out.steps.split('\n')).toEqual(['Igisa ang bawang at sibuyas', 'Ilagay ang baboy at lutuin ng 20 minutes'])
+    expect(out.tags).toEqual(['bicolexpress', 'filipinofood'])
+    expect(out.url).toBe('https://www.facebook.com/reel/987654321')
+    expect(out.sourceType).toBe('reel')
+  })
+  it('treats numbered sentences as steps, not ingredients', () => {
+    const out = importCaption('Easy rice\n1. Wash the rice well and drain it\n2 cups rice')
+    expect(out.steps).toContain('Wash the rice well and drain it')
+    expect(out.ingredients).toBe('2 cups rice')
   })
 })

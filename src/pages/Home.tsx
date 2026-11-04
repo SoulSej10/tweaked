@@ -79,22 +79,22 @@ export default function Home() {
       <nav className="quick" aria-label="Quick actions">
         <Link to="/shopping" className="qa"><span aria-hidden>🛒</span><span>Shopping list</span>{shopping > 0 && <span className="badge">{shopping}</span>}</Link>
         <Link to="/recipes?pantry=1" className="qa"><span aria-hidden>🥕</span><span>What can I make?</span></Link>
-        <button className="qa" onClick={() => (hero ? nav(`/dish/${hero.id}`) : setBump((b) => b + 1))}><span aria-hidden>🎲</span><span>Surprise me</span></button>
+        <button className="qa" onClick={() => (hero ? nav(`/dish/${encodeURIComponent(hero.id)}`) : setBump((b) => b + 1))}><span aria-hidden>🎲</span><span>Surprise me</span></button>
         <Link to="/new" className="qa"><span aria-hidden>✍️</span><span>Add recipe</span></Link>
       </nav>
 
       {hero ? (
         <section className="hero rise">
-          <Link to={`/dish/${hero.id}`} className={`hero-img dthumb t${tileIndex(hero.name)}`}>
+          <Link to={`/dish/${encodeURIComponent(hero.id)}`} className={`hero-img dthumb t${tileIndex(hero.name)}`}>
             <span className="demoji" aria-hidden>{dishEmoji(hero.name, [hero.category])}</span>
-            {hero.thumb && <img src={thumbUrl(hero, 'large')} alt="" onError={(e) => (e.currentTarget.style.display = 'none')} />}
+            {hero.thumb && <img src={thumbUrl(hero, 'medium')} alt="" decoding="async" fetchPriority="high" onError={(e) => (e.currentTarget.style.display = 'none')} />}
             <span className="hero-badge">Tonight's pick</span>
           </Link>
           <div className="hero-body">
             <h2>{hero.name}</h2>
             <p className="muted">{hero.cuisine ? `${hero.cuisine} · ` : ''}{hero.ingredients.length} ingredients · {hero.steps.length} steps{hero.minutes ? ` · ${hero.minutes} min` : ''}</p>
             <div className="row wrap">
-              <Link className="btn primary" to={`/dish/${hero.id}`}>See the recipe</Link>
+              <Link className="btn primary" to={`/dish/${encodeURIComponent(hero.id)}`}>See the recipe</Link>
               <button className="btn" onClick={() => setBump((b) => b + 1)}>Not feeling it</button>
             </div>
           </div>

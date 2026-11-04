@@ -156,34 +156,79 @@ export function formatSteps(steps: Step[]): string {
   return steps.map((s) => s.text).join('\n')
 }
 
-/**
- * Best-effort import of a pasted caption. Looks for "Ingredients" / "Steps" headings,
- * otherwise treats quantity-looking lines as ingredients and the rest as steps.
- */
-export function importCaption(raw: string): { title: string; ingredients: string; steps: string } {
-  const lines = raw.split('\n').map((l) => l.trim()).filter(Boolean)
-  const isIngHead = (l: string) => /^(ingredients?|sangkap|mga sangkap)\b/i.test(l.replace(/[^\w\s]/g, '').trim())
-  const isStepHead = (l: string) =>
-    /^(steps?|instructions?|directions?|method|procedure|paano|how to cook)\b/i.test(l.replace(/[^\w\s]/g, '').trim())
+export type SourceKind = 'reel' | 'link'
 
+const URL_RE = /https?:\/\/[^\s<>"')]+/i
+const SOCIAL_RE = /(^|\.)(facebook\.com|fb\.com|fb\.watch|instagram\.com|tiktok\.com)$|youtube\.com\/shorts/i
+
+/** Find a link in pasted text and say whether it looks like a social-media reel or a normal web page. */
+export function detectSource(text: string): { url: string | null; type: SourceKind | null } {
+  const m = text.match(URL_RE)
+  if (!m) return { url: null, type: null }
+  const url = m[0].replace(/[.,;!?]+$/, '')
+  let host: string
+  try {
+    host = new URL(url).hostname.replace(/^www\./, '')
+  } catch {
+    return { url: null, type: null }
+  }
+  return { url, type: SOCIAL_RE.test(host) || /youtube\.com\/shorts/i.test(url) ? 'reel' : 'link' }
+}
+
+export type CaptionImport = {
+  title: string
+  ingredients: string
+  steps: string
+  tags: string[]
+  url: string | null
+  sourceType: SourceKind | null
+}
+
+const plain = (l: string) => l.replace(/[^\p{L}\p{N}\s]/gu, ' ').replace(/\s+/g, ' ').trim()
+const ING_HEAD = /^(ingredients?|sangkap|mga sangkap|sahog|mga sahog|what you need|you will need|kailangan)\b/i
+const STEP_HEAD = /^(steps?|instructions?|directions?|method|procedure|paano|paraan|how to cook|pagluluto|cooking instructions|preparation)\b/i
+
+/**
+ * Best-effort import of a pasted caption (Facebook, Instagram, TikTok, a text message...).
+ * Understands English and Filipino headings, emoji bullets, numbered steps, hashtags and links.
+ * Without headings, quantity-looking lines become ingredients and the rest become steps.
+ */
+export function importCaption(raw: string): CaptionImport {
+  const { url, type } = detectSource(raw)
+  const tags = [...new Set((raw.match(/#[\p{L}\p{N}_]+/gu) ?? []).map((t) => t.slice(1).toLowerCase()))].slice(0, 6)
+  const lines = raw
+    .split('\n')
+    .map((l) => l.replace(URL_RE, '').trim())
+    // Drop hashtag lines, "Watch:" leftovers once the link is removed, and calls to action.
+    .filter((l) => l.length > 0 && !/^#/.test(l) && !/^(watch|link|source|video)$/i.test(plain(l)) && !/^(follow|like|share|subscribe|link in bio)\b/i.test(plain(l)))
+  const isIngHead = (l: string) => ING_HEAD.test(plain(l)) && plain(l).split(' ').length <= 5
+  const isStepHead = (l: string) => STEP_HEAD.test(plain(l)) && plain(l).split(' ').length <= 6
+
+  const tidy = (l: string) => l.replace(/^[^\p{L}\p{N}]+|[^\p{L}\p{N}\s)!?]+$/gu, '').trim()
+  // Captions often read "🔥 BICOL EXPRESS 🌶️ super sarap!": keep the first chunk between emoji.
+  const titleSegment = (l: string) => l.split(/[\p{Extended_Pictographic}️|]+/u).map((x) => x.trim()).find((x) => x.length >= 3) ?? l
   let title = ''
   const first = lines[0] ?? ''
-  if (first && first.length <= 80 && !isIngHead(first) && !isStepHead(first) && !/^\d/.test(first)) title = first.replace(/^[^\w]+|[^\w]+$/g, '')
+  if (first && first.length <= 80 && !isIngHead(first) && !isStepHead(first) && !/^\d/.test(first)) title = tidy(titleSegment(first))
 
   const ing: string[] = []
   const steps: string[] = []
   let mode: 'none' | 'ing' | 'step' = 'none'
-  const looksLikeIngredient = (l: string) => /^[-*•]?\s*(\d|[½¼¾⅓⅔])/.test(l) && l.length < 70
+  const numberedStep = (l: string) => /^\s*(?:step\s*)?\d+\s*[.):-]\s+\p{L}/iu.test(l) && l.length > 24
+  const looksLikeIngredient = (l: string) => !numberedStep(l) && /^(?:[-*•▪✔✅👉]|️)*\s*(\d|[½¼¾⅓⅔])/u.test(l) && l.length < 70
   for (const [idx, l] of lines.entries()) {
-    if (idx === 0 && l.replace(/^[^\w]+|[^\w]+$/g, '') === title && title) continue
+    if (idx === 0 && title) continue
     if (isIngHead(l)) { mode = 'ing'; continue }
     if (isStepHead(l)) { mode = 'step'; continue }
-    if (mode === 'ing') ing.push(l)
-    else if (mode === 'step') steps.push(l)
-    else if (looksLikeIngredient(l)) ing.push(l)
-    else if (!l.startsWith('#')) steps.push(l)
+    const text = l.replace(/^[^\p{L}\p{N}½¼¾⅓⅔]+/u, '').trim()
+    if (!text) continue
+    const bare = text.replace(/^(?:step\s*)?\d+\s*[.):-]\s+(?=\p{L})/iu, '')
+    if (mode === 'ing') ing.push(text)
+    else if (mode === 'step') steps.push(bare)
+    else if (looksLikeIngredient(l)) ing.push(text)
+    else steps.push(bare)
   }
-  return { title, ingredients: ing.join('\n'), steps: steps.join('\n') }
+  return { title, ingredients: ing.join('\n'), steps: steps.join('\n'), tags, url, sourceType: type }
 }
 
 export function formatDuration(seconds: number): string {

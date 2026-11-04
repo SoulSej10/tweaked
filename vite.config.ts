@@ -17,6 +17,8 @@ export default defineConfig({
         background_color: '#fff7ef',
         display: 'standalone',
         start_url: '/',
+        // Lets you Share a Facebook/Instagram/TikTok post straight into Tweaked (Android, once installed).
+        share_target: { action: '/share', method: 'GET', params: { title: 'title', text: 'text', url: 'url' } },
         icons: [
           { src: '/icon-192.png', sizes: '192x192', type: 'image/png' },
           { src: '/icon-512.png', sizes: '512x512', type: 'image/png' },
@@ -29,6 +31,18 @@ export default defineConfig({
         globPatterns: ['**/*.{js,css,html,svg,png,ico,woff2,webmanifest}'],
         // Recipes stay viewable offline: try the network first, fall back to the last response.
         runtimeCaching: [
+          {
+            // The bundled dish catalog (~900 dishes): serve the cached copy instantly, refresh quietly in the background.
+            urlPattern: ({ url }) => url.pathname === '/catalog.json',
+            handler: 'StaleWhileRevalidate',
+            options: { cacheName: 'catalog', cacheableResponse: { statuses: [200] } },
+          },
+          {
+            // Wikibooks search results, so a dish you opened once still opens offline.
+            urlPattern: ({ url }) => url.hostname === 'en.wikibooks.org',
+            handler: 'NetworkFirst',
+            options: { cacheName: 'wikibooks', networkTimeoutSeconds: 5, cacheableResponse: { statuses: [200] }, expiration: { maxEntries: 60, maxAgeSeconds: 60 * 60 * 24 * 14 } },
+          },
           {
             // Suggestion photos from the open recipe sources: show the cached one instantly, refresh quietly.
             urlPattern: ({ url }) => /(themealdb\.com|thecocktaildb\.com|cdn\.dummyjson\.com)$/.test(url.hostname) && /\.(jpg|jpeg|png|webp)(\/\w+)?$/.test(url.pathname),

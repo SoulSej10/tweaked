@@ -14,6 +14,7 @@ const Library = lazy(() => import('./pages/Library'))
 const Onboarding = lazy(() => import('./pages/Onboarding'))
 const Settings = lazy(() => import('./pages/Settings'))
 const Shopping = lazy(() => import('./pages/Shopping'))
+const Share = lazy(() => import('./pages/Share'))
 
 const Splash = () => (
   <main className="splash"><p className="splash-emoji bounce" aria-hidden>🍳</p><p className="muted">Warming up the pan…</p></main>
@@ -39,6 +40,7 @@ function Routed() {
         <Route path="/recipe/:id/cook" element={<Cook />} />
         <Route path="/settings" element={<Settings />} />
         <Route path="/shopping" element={<Shopping />} />
+        <Route path="/share" element={<Share />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </Suspense>

@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { addVersion, createRecipe, getRecipe, updateRecipeMeta, type RecipeFull } from '../lib/api'
 import { useAsync } from '../lib/hooks'
-import { formatIngredient, formatSteps, importCaption, parseIngredients, parseSteps } from '../lib/parse'
+import { detectSource, formatIngredient, formatSteps, importCaption, parseIngredients, parseSteps } from '../lib/parse'
 import { CUISINES, KINDS } from '../lib/prefs'
 import type { SourceType } from '../lib/types'
 
@@ -30,15 +30,21 @@ function Form({ full }: { full: RecipeFull | null }) {
   const current = full?.versions.find((v) => v.id === full.recipe.current_version_id) ?? full?.versions[0]
   const r = full?.recipe
 
-  const [title, setTitle] = useState(r?.title ?? '')
-  const [sourceType, setSourceType] = useState<SourceType>(r?.source_type ?? 'own')
-  const [sourceUrl, setSourceUrl] = useState(r?.source_url ?? '')
-  const [sourceNote, setSourceNote] = useState(r?.source_note ?? '')
+  // New recipes can arrive pre-filled: from a search ("Add Bicol Express myself") or from the phone's Share menu.
+  const sharedText = full ? '' : params.get('caption') ?? ''
+  const imported = sharedText ? importCaption(sharedText) : null
+  const sharedUrl = full ? '' : params.get('url') ?? imported?.url ?? ''
+  const sharedType = sharedUrl ? detectSource(sharedUrl).type : null
+
+  const [title, setTitle] = useState(r?.title ?? params.get('title') ?? imported?.title ?? '')
+  const [sourceType, setSourceType] = useState<SourceType>(r?.source_type ?? imported?.sourceType ?? sharedType ?? 'own')
+  const [sourceUrl, setSourceUrl] = useState(r?.source_url ?? sharedUrl)
+  const [sourceNote, setSourceNote] = useState(r?.source_note ?? (sharedText ? sharedText.slice(0, 600) : ''))
   const [servings, setServings] = useState<number | null>(r?.servings ?? null)
-  const [tags, setTags] = useState(r?.tags.join(', ') ?? '')
+  const [tags, setTags] = useState(r?.tags.join(', ') ?? imported?.tags.join(', ') ?? '')
   const [bring, setBring] = useState(r?.bring_from_home ?? false)
-  const [ingText, setIngText] = useState((current?.ingredients ?? []).map(formatIngredient).join('\n'))
-  const [stepText, setStepText] = useState(formatSteps(current?.steps ?? []))
+  const [ingText, setIngText] = useState((current?.ingredients ?? []).map(formatIngredient).join('\n') || imported?.ingredients || '')
+  const [stepText, setStepText] = useState(formatSteps(current?.steps ?? []) || imported?.steps || '')
   const [changeNote, setChangeNote] = useState(params.get('note') ?? '')
   const [caption, setCaption] = useState('')
   const [busy, setBusy] = useState(false)
@@ -47,12 +53,20 @@ function Form({ full }: { full: RecipeFull | null }) {
   const tagList = tags.split(',').map(normTag).filter(Boolean)
   const toggleTag = (t: string) => setTags((tagList.includes(t) ? tagList.filter((x) => x !== t) : [...tagList, t]).join(', '))
 
+  const pastedLink = detectSource(caption)
+  const linkOnly = Boolean(pastedLink.url) && caption.replace(pastedLink.url ?? '', '').trim().length < 12
+
   function runImport() {
     const out = importCaption(caption)
     if (out.title && !title) setTitle(out.title)
     if (out.ingredients) setIngText(out.ingredients)
     if (out.steps) setStepText(out.steps)
-    if (!sourceNote) setSourceNote(caption)
+    if (out.url) {
+      setSourceUrl(out.url)
+      if (out.sourceType) setSourceType(out.sourceType)
+    }
+    if (out.tags.length) setTags((t) => [...new Set([...t.split(',').map(normTag).filter(Boolean), ...out.tags])].join(', '))
+    if (!sourceNote) setSourceNote(caption.slice(0, 600))
   }
 
   async function save(e: React.FormEvent) {
@@ -108,8 +122,10 @@ function Form({ full }: { full: RecipeFull | null }) {
         {!editing && (
           <details className="fcard">
             <summary>📋 Paste a caption or recipe text</summary>
-            <textarea rows={5} placeholder="Paste a reel caption or recipe text and we'll sort out the ingredients and steps" value={caption} onChange={(e) => setCaption(e.target.value)} />
-            <button type="button" className="btn" onClick={runImport} disabled={!caption.trim()}>Fill in the form</button>
+            <p className="muted small">From Facebook, Instagram or TikTok: open the post, press and hold the caption to copy it, then paste it here. We pick out the ingredients, steps, hashtags and the link.</p>
+            <textarea rows={5} placeholder="Paste a reel caption or recipe text" value={caption} onChange={(e) => setCaption(e.target.value)} />
+            {linkOnly && <p className="callout-plain">That's just a link. Facebook and Instagram only show recipes to their own apps, so Tweaked can't read the post for you. <a href={pastedLink.url ?? '#'} target="_blank" rel="noreferrer">Open it</a>, copy the caption, and paste that here. We'll keep the link as the source.</p>}
+            <button type="button" className="btn" onClick={runImport} disabled={!caption.trim()}>{linkOnly ? 'Save the link as the source' : 'Fill in the form'}</button>
           </details>
         )}
 

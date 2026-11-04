@@ -63,7 +63,6 @@ export default function Detail() {
       <div className={`banner short dthumb t${tileIndex(recipe.title)} no-print`}>
         <span className="demoji" aria-hidden>{dishEmoji(recipe.title, recipe.tags)}</span>
         <Link to="/recipes" className="float-back" aria-label="Back to recipes">←</Link>
-        <Link to={`/recipe/${recipe.id}/edit`} className="float-edit">Edit</Link>
       </div>
 
       <section className="pad">
@@ -108,13 +107,13 @@ export default function Detail() {
 
         <div className="ing-head">
           <h2>Ingredients</h2>
-          <div className="chips seg no-print" role="group" aria-label="Units">
+          {shown?.ingredients.length ? <div className="chips seg no-print" role="group" aria-label="Units">
             {(['as-saved', 'metric', 'us'] as const).map((u) => (
               <button key={u} className={`chip ${units === u ? 'on' : ''}`} onClick={() => setUnits(u)}>
                 {u === 'as-saved' ? 'As saved' : u === 'us' ? 'US' : 'Metric'}
               </button>
             ))}
-          </div>
+          </div> : null}
         </div>
         {shown?.ingredients.length ? (
           <ul className="plain">
@@ -157,7 +156,11 @@ export default function Detail() {
 
       <div className="actionbar no-print">
         <Link to={`/recipe/${recipe.id}/edit`} className="btn">Edit</Link>
-        <Link to={`/recipe/${recipe.id}/cook`} className="btn primary grow">Start cooking</Link>
+        {shown?.steps.length ? (
+          <Link to={`/recipe/${recipe.id}/cook`} className="btn primary grow">Start cooking</Link>
+        ) : (
+          <Link to={`/recipe/${recipe.id}/edit`} className="btn primary grow">Add ingredients &amp; steps</Link>
+        )}
       </div>
     </main>
   )
