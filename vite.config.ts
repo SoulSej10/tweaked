@@ -13,8 +13,8 @@ export default defineConfig({
         name: 'Tweaked',
         short_name: 'Tweaked',
         description: 'Your version of every dish, with every tweak remembered.',
-        theme_color: '#c2512f',
-        background_color: '#faf6f0',
+        theme_color: '#3f5a3a',
+        background_color: '#f7f3ea',
         display: 'standalone',
         start_url: '/',
         icons: [

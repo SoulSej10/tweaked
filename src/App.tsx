@@ -1,12 +1,13 @@
+import { lazy, Suspense } from 'react'
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'
 import { AuthProvider, Login, useAuth } from './auth'
 import { configured } from './lib/supabase'
-import Compare from './pages/Compare'
-import Cook from './pages/Cook'
-import Detail from './pages/Detail'
-import Edit from './pages/Edit'
+const Compare = lazy(() => import('./pages/Compare'))
+const Cook = lazy(() => import('./pages/Cook'))
+const Detail = lazy(() => import('./pages/Detail'))
+const Edit = lazy(() => import('./pages/Edit'))
 import Library from './pages/Library'
-import Settings from './pages/Settings'
+const Settings = lazy(() => import('./pages/Settings'))
 
 function Gate() {
   const { session, loading } = useAuth()
@@ -21,6 +22,7 @@ function Gate() {
   if (loading) return <main><p className="muted pad">Loading…</p></main>
   if (!session) return <Login />
   return (
+    <Suspense fallback={<main><p className="muted pad">Loading…</p></main>}>
     <Routes>
       <Route path="/" element={<Library />} />
       <Route path="/new" element={<Edit />} />
@@ -31,6 +33,7 @@ function Gate() {
       <Route path="/settings" element={<Settings />} />
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
+    </Suspense>
   )
 }
 

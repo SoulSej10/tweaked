@@ -40,7 +40,52 @@ export function scaleAmount(amount: string, factor: number): string {
   return n === null ? amount : pretty(n * factor)
 }
 
-const BULLET = /^\s*(?:[-*•–]|\d+[.)])\s*/
+export type UnitSystem = 'as-saved' | 'metric' | 'us'
+
+const TO_METRIC: Record<string, [number, string]> = {
+  cup: [240, 'ml'], cups: [240, 'ml'],
+  tbsp: [15, 'ml'], tablespoon: [15, 'ml'], tablespoons: [15, 'ml'],
+  tsp: [5, 'ml'], teaspoon: [5, 'ml'], teaspoons: [5, 'ml'],
+  oz: [28.35, 'g'], lb: [453.6, 'g'], lbs: [453.6, 'g'],
+}
+
+function round(n: number): string {
+  if (n >= 100) return String(Math.round(n / 5) * 5)
+  if (n >= 10) return String(Math.round(n))
+  return String(Math.round(n * 10) / 10)
+}
+
+/** Convert one ingredient between US and metric. Anything not clearly convertible is left alone. */
+export function convertIngredient(i: Ingredient, to: UnitSystem): Ingredient {
+  if (to === 'as-saved') return i
+  const n = toNumber(i.amount)
+  const unit = i.unit.toLowerCase()
+  if (n === null || !unit) return i
+  if (to === 'metric') {
+    const m = TO_METRIC[unit]
+    if (!m) return i
+    let v = n * m[0]
+    let u = m[1]
+    if (u === 'g' && v >= 1000) { v /= 1000; u = 'kg' }
+    if (u === 'ml' && v >= 1000) { v /= 1000; u = 'l' }
+    return { ...i, amount: round(v), unit: u }
+  }
+  // metric -> US
+  if (unit === 'ml') {
+    if (n >= 120) return { ...i, amount: pretty(Math.round((n / 240) * 4) / 4), unit: 'cup' }
+    if (n >= 15) return { ...i, amount: pretty(Math.round((n / 15) * 2) / 2), unit: 'tbsp' }
+    return { ...i, amount: pretty(Math.round((n / 5) * 4) / 4), unit: 'tsp' }
+  }
+  if (unit === 'l') return { ...i, amount: pretty(Math.round(((n * 1000) / 240) * 4) / 4), unit: 'cup' }
+  if (unit === 'g' || unit === 'kg') {
+    const grams = unit === 'kg' ? n * 1000 : n
+    if (grams >= 453.6) return { ...i, amount: pretty(Math.round((grams / 453.6) * 4) / 4), unit: 'lb' }
+    return { ...i, amount: pretty(Math.round(grams / 28.35)), unit: 'oz' }
+  }
+  return i
+}
+
+const BULLET =/^\s*(?:[-*•–]|\d+[.)])\s*/
 
 export function parseIngredientLine(line: string): Ingredient | null {
   const text = line.replace(BULLET, '').trim()

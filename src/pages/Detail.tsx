@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { deleteRecipe, getRecipe, rollbackTo } from '../lib/api'
 import { useAsync } from '../lib/hooks'
-import { formatIngredient, scaleAmount } from '../lib/parse'
+import { convertIngredient, formatIngredient, scaleAmount, type UnitSystem } from '../lib/parse'
 
 export default function Detail() {
   const { id = '' } = useParams()
@@ -11,6 +11,7 @@ export default function Detail() {
   const [viewId, setViewId] = useState<string | null>(null)
   const [servings, setServings] = useState<number | null>(null)
   const [busy, setBusy] = useState(false)
+  const [units, setUnits] = useState<UnitSystem>('as-saved')
 
   if (loading) return <main><p className="muted pad">Loading…</p></main>
   if (error || !data) return <main><p className="error pad">{error ?? 'Not found'}</p><Link to="/" className="btn">Back</Link></main>
@@ -44,7 +45,7 @@ export default function Detail() {
 
   return (
     <main>
-      <header className="bar">
+      <header className="bar no-print">
         <Link to="/" className="btn ghost">← Library</Link>
         <Link to={`/recipe/${recipe.id}/edit`} className="btn ghost">Edit</Link>
       </header>
@@ -58,7 +59,7 @@ export default function Detail() {
           {recipe.source_note && recipe.source_type === 'person' && <> · {recipe.source_note}</>}
         </p>
 
-        <Link to={`/recipe/${recipe.id}/cook`} className="btn primary cook">Cook</Link>
+        <Link to={`/recipe/${recipe.id}/cook`} className="btn primary cook no-print">Cook</Link>
 
         {versions.length > 1 && (
           <div className="versions">
@@ -87,11 +88,20 @@ export default function Detail() {
           </div>
         )}
 
-        <h2>Ingredients</h2>
+        <div className="ing-head">
+          <h2>Ingredients</h2>
+          <div className="chips seg no-print" role="group" aria-label="Units">
+            {(['as-saved', 'metric', 'us'] as const).map((u) => (
+              <button key={u} className={`chip ${units === u ? 'on' : ''}`} onClick={() => setUnits(u)}>
+                {u === 'as-saved' ? 'As saved' : u === 'us' ? 'US' : 'Metric'}
+              </button>
+            ))}
+          </div>
+        </div>
         {shown?.ingredients.length ? (
           <ul className="plain">
             {shown.ingredients.map((i, n) => (
-              <li key={n}>{formatIngredient({ ...i, amount: scaleAmount(i.amount, factor) })}</li>
+              <li key={n}>{formatIngredient(convertIngredient({ ...i, amount: scaleAmount(i.amount, factor) }, units))}</li>
             ))}
           </ul>
         ) : <p className="muted">None yet. <Link to={`/recipe/${recipe.id}/edit`}>Add some</Link></p>}
@@ -114,7 +124,10 @@ export default function Detail() {
           </>
         )}
 
-        <button className="link danger" onClick={remove}>Delete recipe</button>
+        <div className="no-print row">
+          <button className="btn" onClick={() => window.print()}>Print / save as PDF</button>
+        </div>
+        <button className="link danger no-print" onClick={remove}>Delete recipe</button>
       </section>
     </main>
   )
