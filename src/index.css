@@ -101,6 +101,7 @@ textarea { resize: vertical; }
 input:focus, textarea:focus, select:focus, button:focus-visible, a:focus-visible { outline: 3px solid color-mix(in srgb, var(--accent) 45%, transparent); outline-offset: 1px; }
 input.big { font-size: 1.2rem; padding: 16px; font-weight: 700; }
 label { display: flex; flex-direction: column; gap: 4px; font-weight: 700; font-size: 0.95rem; }
+label input, label textarea, label select { font-weight: 500; }
 label.check, .check { flex-direction: row; align-items: center; gap: 10px; font-weight: 600; }
 .check input, .switch input { width: 24px; height: 24px; min-height: 0; accent-color: var(--accent); flex: none; }
 

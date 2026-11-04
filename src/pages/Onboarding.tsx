@@ -51,7 +51,7 @@ export default function Onboarding() {
             <p className="lead">Pick as many as you like.</p>
             <div className="tiles">
               {CUISINES.map((c) => (
-                <button key={c.id} className={`tile ${draft.cuisines.includes(c.id) ? 'on' : ''}`} aria-pressed={draft.cuisines.includes(c.id)} onClick={() => setDraft({ ...draft, cuisines: toggle(draft.cuisines, c.id) })}>
+                <button key={c.id} className={`tile ${draft.cuisines.includes(c.id) ? 'on' : ''}`} aria-pressed={draft.cuisines.includes(c.id)} onClick={() => setDraft((d) => ({ ...d, cuisines: toggle(d.cuisines, c.id) }))}>
                   <span className="tile-emoji" aria-hidden>{c.flag}</span>{c.label}
                 </button>
               ))}
@@ -65,7 +65,7 @@ export default function Onboarding() {
             <p className="lead">Mains, breakfast, pastries, anything. Pick a few.</p>
             <div className="tiles">
               {KINDS.map((k) => (
-                <button key={k.id} className={`tile ${draft.kinds.includes(k.id) ? 'on' : ''}`} aria-pressed={draft.kinds.includes(k.id)} onClick={() => setDraft({ ...draft, kinds: toggle(draft.kinds, k.id) })}>
+                <button key={k.id} className={`tile ${draft.kinds.includes(k.id) ? 'on' : ''}`} aria-pressed={draft.kinds.includes(k.id)} onClick={() => setDraft((d) => ({ ...d, kinds: toggle(d.kinds, k.id) }))}>
                   <span className="tile-emoji" aria-hidden>{k.emoji}</span>{k.label}
                 </button>
               ))}
@@ -79,7 +79,7 @@ export default function Onboarding() {
             <p className="lead">We keep every suggestion simple. This sets how simple.</p>
             <div className="options">
               {EFFORTS.map((e) => (
-                <button key={e.id} className={`option ${draft.effort === e.id ? 'on' : ''}`} aria-pressed={draft.effort === e.id} onClick={() => setDraft({ ...draft, effort: e.id as Effort })}>
+                <button key={e.id} className={`option ${draft.effort === e.id ? 'on' : ''}`} aria-pressed={draft.effort === e.id} onClick={() => setDraft((d) => ({ ...d, effort: e.id as Effort }))}>
                   <span className="tile-emoji" aria-hidden>{e.emoji}</span>
                   <span><b>{e.label}</b><small>{e.hint}</small></span>
                 </button>
@@ -94,7 +94,7 @@ export default function Onboarding() {
             <p className="lead">We will hide dishes that contain these. Pick none if you eat everything.</p>
             <div className="tiles">
               {AVOID.map((a) => (
-                <button key={a.id} className={`tile ${draft.avoid.includes(a.id) ? 'on' : ''}`} aria-pressed={draft.avoid.includes(a.id)} onClick={() => setDraft({ ...draft, avoid: toggle(draft.avoid, a.id) })}>
+                <button key={a.id} className={`tile ${draft.avoid.includes(a.id) ? 'on' : ''}`} aria-pressed={draft.avoid.includes(a.id)} onClick={() => setDraft((d) => ({ ...d, avoid: toggle(d.avoid, a.id) }))}>
                   <span className="tile-emoji" aria-hidden>{a.emoji}</span>{a.label}
                 </button>
               ))}

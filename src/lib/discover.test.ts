@@ -32,6 +32,17 @@ describe('dish filters', () => {
     expect(conflicts(dish(), ['pork', 'nuts'])).toBe(false)
     expect(conflicts(dish({ ingredients: [{ name: 'Bacon', measure: '' }] }), [])).toBe(false)
   })
+  it('matches whole words for short terms and prefixes for long ones', () => {
+    expect(conflicts(dish({ ingredients: [{ name: 'Chamomile tea', measure: '' }] }), ['pork'])).toBe(false)
+    expect(conflicts(dish({ ingredients: [{ name: 'Hamburger bun', measure: '' }] }), ['pork'])).toBe(false)
+    expect(conflicts(dish({ ingredients: [{ name: 'Smoked ham', measure: '' }] }), ['pork'])).toBe(true)
+    expect(conflicts(dish({ ingredients: [{ name: 'Anchovies', measure: '' }] }), ['seafood'])).toBe(true)
+  })
+  it('always keeps alcohol off the drinks shelf', () => {
+    const drink = dish({ category: 'Drink', ingredients: [{ name: 'White Rum', measure: '2 oz' }, { name: 'Lime', measure: '1' }] })
+    expect(conflicts(drink, [])).toBe(true)
+    expect(conflicts(dish({ category: 'Drink', ingredients: [{ name: 'Mango', measure: '1' }, { name: 'Yogurt', measure: '1 cup' }] }), [])).toBe(false)
+  })
 })
 
 describe('dish ids and links', () => {

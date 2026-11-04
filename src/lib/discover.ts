@@ -301,10 +301,18 @@ export function isSimple(d: Dish, e: Effort): boolean {
   return d.ingredients.length > 0 && d.ingredients.length <= effortLimit(e) && d.steps.length > 0 && d.steps.length <= 12
 }
 
+/** Short words must match whole words ("ham" must not hide "chamomile"); longer ones match as prefixes ("anchov"). */
+function mentions(text: string, word: string): boolean {
+  const esc = word.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+  return new RegExp(word.length <= 4 ? `\\b${esc}s?\\b` : `\\b${esc}`, 'i').test(text)
+}
+
 export function conflicts(d: Dish, avoid: string[]): boolean {
-  if (avoid.length === 0) return false
-  const text = `${d.name} ${d.ingredients.map((i) => i.name).join(' ')}`.toLowerCase()
-  return AVOID.filter((a) => avoid.includes(a.id)).some((a) => a.words.some((w) => text.includes(w)))
+  // The drinks shelf promises "no alcohol", so that rule always applies to it.
+  const rules = d.category === 'Drink' && !avoid.includes('alcohol') ? [...avoid, 'alcohol'] : avoid
+  if (rules.length === 0) return false
+  const text = `${d.name} ${d.ingredients.map((i) => i.name).join(' ')}`
+  return AVOID.filter((a) => rules.includes(a.id)).some((a) => a.words.some((w) => mentions(text, w)))
 }
 
 export function dishUrl(d: Dish): string {
