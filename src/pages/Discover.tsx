@@ -158,7 +158,8 @@ export default function Discover() {
             </p>
           )}
 
-          {ready && <CantFind term={term} meant={outcome.meant} none={localList.length + webList.length + similarList.length === 0} />}
+          {/* Shown as soon as the local results are in; it never waits on the web search. */}
+          {localReady && <CantFind term={term} meant={outcome.meant} none={ready && localList.length + webList.length + similarList.length === 0} />}
         </>
       ) : isLink ? null : (
         <>
