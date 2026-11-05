@@ -1,4 +1,5 @@
 import { Component, type ErrorInfo, type ReactNode } from 'react'
+import { Warning } from '@phosphor-icons/react'
 
 type Props = { children: ReactNode }
 type State = { failed: boolean }
@@ -19,7 +20,7 @@ export class ErrorBoundary extends Component<Props, State> {
     if (!this.state.failed) return this.props.children
     return (
       <main className="splash">
-        <p className="splash-emoji" aria-hidden>🥘</p>
+        <Warning size={44} weight="duotone" className="splash-icon" aria-hidden />
         <h1>Oops, something burned</h1>
         <p className="muted">That screen hit a problem. Your recipes are safe.</p>
         <div className="row center wrap" style={{ marginTop: 12 }}>

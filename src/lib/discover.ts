@@ -1,4 +1,5 @@
 import { AVOID, CUISINES, KINDS, cuisineOf, type Cuisine, type Effort, type Preferences } from './prefs'
+import { compact, interpret, normalize, wordMatches } from './fuzzy'
 import { parseIngredientLine, parseStepLine } from './parse'
 import type { Ingredient, Step } from './types'
 
@@ -412,24 +413,134 @@ function dummyAll(): Promise<Dish[]> {
 
 // ---------- search ----------
 
-const haystack = (d: Dish) => `${d.name} ${d.cuisine} ${d.category}`.toLowerCase()
+/** Words people use for dishes that may be missing from the catalog's own names (so they can still be split and corrected). */
+const EXTRA_WORDS = ['pan', 'de', 'sal', 'sa', 'ng', 'na', 'con', 'al', 'la', 'el', 'kare', 'leche', 'flan', 'arroz', 'caldo', 'halo', 'bicol', 'express', 'sinigang', 'adobo', 'pancit', 'lumpia', 'lechon', 'tinola', 'sisig', 'puto', 'turon', 'laing', 'bulalo', 'nilaga']
 
-/** Instant search of the bundled catalog: every word must match; name matches rank first. */
-export async function searchCatalog(q: string): Promise<Dish[]> {
-  const words = q.toLowerCase().split(/[^a-z0-9àèéìòùñç]+/).filter((w) => w.length > 1)
-  if (words.length === 0) return []
-  const all = await loadCatalog()
-  const scored: [number, Dish][] = []
+let vocabCache: { vocab: Set<string>; names: string[]; size: number } | null = null
+
+/** Every word that appears in a dish name or ingredient, and every whole dish name. Built once. */
+function vocabFor(all: Dish[]) {
+  if (vocabCache && vocabCache.size === all.length) return vocabCache
+  const vocab = new Set<string>(EXTRA_WORDS)
+  const names: string[] = []
   for (const d of all) {
-    const head = haystack(d)
-    const full = `${head} ${d.ingredients.map((i) => i.name).join(' ').toLowerCase()}`
-    if (!words.every((w) => full.includes(w))) continue
-    const name = d.name.toLowerCase()
-    const inName = words.filter((w) => name.includes(w)).length
-    const inHead = words.filter((w) => head.includes(w)).length
-    scored.push([inName * 3 + inHead + (name.startsWith(words[0]) ? 2 : 0) - d.ingredients.length * 0.01, d])
+    names.push(d.name)
+    for (const w of normalize(d.name).split(' ')) if (w.length >= 2) vocab.add(w)
+    for (const i of d.ingredients) for (const w of normalize(i.name).split(' ')) if (w.length >= 3) vocab.add(w)
   }
-  return scored.sort((a, b) => b[0] - a[0]).map(([, d]) => d)
+  vocabCache = { vocab, names, size: all.length }
+  return vocabCache
+}
+
+export type SearchOutcome = {
+  dishes: Dish[]
+  /** True when nothing matched exactly and these are only the nearest dishes. */
+  closest: boolean
+  /** What we think the person meant, when it differs from what they typed ("pan de sal"). */
+  meant: string | null
+  /** Related dishes to suggest when the exact one is missing (bread for "pandesal"). */
+  similar: Dish[]
+  /** Every spelling worth searching the web for. */
+  variants: string[]
+}
+
+type Hit = { score: number; fuzzy: boolean }
+
+const STOP = new Set(['de', 'la', 'el', 'sa', 'na', 'ng', 'con', 'al', 'and', 'with', 'of', 'the', 'a', 'y', 'at', 'in', 'to', 'for'])
+const stem = (w: string) => (w.length > 4 ? w.replace(/(es|s)$/, '') : w)
+/** A typed word is "in" a list of words if it is the same word (ignoring plurals) or the start of a longer one. */
+const present = (w: string, tokens: string[]) => {
+  const sw = stem(w)
+  return tokens.some((t) => t === w || stem(t) === sw || (sw.length >= 4 && t.startsWith(sw)))
+}
+
+/** How well one dish matches one search string, or null. Exact word matches beat close spellings. */
+function matchDish(d: Dish, variant: string, rank: number): Hit | null {
+  const all = variant.split(' ').filter((w) => w.length > 1)
+  const words = all.filter((w) => !STOP.has(w)).length > 0 ? all.filter((w) => !STOP.has(w)) : all
+  if (words.length === 0) return null
+  const name = normalize(d.name)
+  const nameCompact = name.replace(/ /g, '')
+  const nameWords = name.split(' ')
+  const restWords = `${normalize(d.cuisine)} ${normalize(d.category)} ${d.ingredients.map((i) => normalize(i.name)).join(' ')}`.split(' ')
+  const penalty = rank * 0.4
+
+  // 1. every word is a word of the dish (name, cuisine, category or an ingredient)
+  if (words.every((w) => present(w, nameWords) || present(w, restWords))) {
+    const inName = words.filter((w) => present(w, nameWords)).length
+    return { score: 10 + inName * 3 + (name.startsWith(words[0]) ? 2 : 0) - d.ingredients.length * 0.01 - penalty, fuzzy: false }
+  }
+  // 2. the same letters without spaces or hyphens: "karekare" inside "Kare-Kare (Oxtail...)"
+  const vc = compact(variant)
+  if (vc.length >= 6 && nameCompact.includes(vc)) return { score: 16 - penalty, fuzzy: false }
+  // 3. every word is a small typo of a word in the name (or is an ingredient)
+  const close = words.filter((w) => nameWords.some((nw) => wordMatches(w, nw))).length
+  if (close > 0 && words.every((w) => nameWords.some((nw) => wordMatches(w, nw)) || present(w, restWords))) {
+    return { score: 5 + close * 2 - penalty, fuzzy: true }
+  }
+  return null
+}
+
+/** How related a dish is to a loose idea ("rice cake"): words in the name count most. */
+function relatedness(d: Dish, term: string): number {
+  const words = normalize(term).split(' ').filter((w) => w.length > 1 && !STOP.has(w))
+  if (words.length === 0) return 0
+  const nameWords = normalize(d.name).split(' ')
+  const catWords = `${normalize(d.category)} ${normalize(d.cuisine)}`.split(' ')
+  const ingWords = d.ingredients.flatMap((i) => normalize(i.name).split(' '))
+  let score = 0
+  for (const w of words) score += present(w, nameWords) ? 3 : present(w, catWords) ? 1 : present(w, ingWords) ? 0.5 : 0
+  return score / words.length
+}
+
+/** Search the bundled catalog the way a person types, not the way a recipe book spells. */
+export async function searchCatalog(q: string): Promise<SearchOutcome> {
+  const all = await loadCatalog()
+  const empty: SearchOutcome = { dishes: [], closest: false, meant: null, similar: [], variants: [normalize(q)].filter(Boolean) }
+  if (all.length === 0 || normalize(q).length < 2) return empty
+
+  const { vocab, names } = vocabFor(all)
+  const reading = interpret(q, vocab, names)
+
+  const best = new Map<string, { dish: Dish; hit: Hit }>()
+  for (const d of all) {
+    for (const [rank, v] of reading.variants.entries()) {
+      const hit = matchDish(d, v, rank)
+      if (!hit) continue
+      const prev = best.get(d.id)
+      if (!prev || hit.score > prev.hit.score) best.set(d.id, { dish: d, hit })
+    }
+  }
+  const ranked = [...best.values()].sort((a, b) => b.hit.score - a.hit.score)
+  const exact = ranked.filter((r) => !r.hit.fuzzy).map((r) => r.dish)
+  const near = ranked.filter((r) => r.hit.fuzzy).map((r) => r.dish)
+  // Always give a few close alternatives when the exact list is thin.
+  const dishes = exact.length >= 6 ? exact : [...exact, ...near].slice(0, Math.max(exact.length, 12))
+
+  let similar: Dish[] = []
+  if (dishes.length < 6 && reading.similar.length > 0) {
+    const have = new Set(dishes.map((d) => d.id))
+    const scored = all
+      .filter((d) => !have.has(d.id) && d.category !== 'Drink')
+      // the first idea listed is the closest one, so it counts a little more than the later ones
+      .map((d) => ({ d, score: Math.max(...reading.similar.map((t, i) => relatedness(d, t) * (1 - i * 0.2))) + (d.thumb ? 0.2 : 0) }))
+      .filter((x) => x.score >= 1)
+      .sort((x, y) => y.score - x.score)
+    similar = scored.slice(0, 8).map((x) => x.d)
+  }
+
+  return { dishes, closest: exact.length === 0 && dishes.length > 0, meant: reading.meant, similar, variants: reading.variants }
+}
+
+/** Search the web (Wikibooks) under the typed spelling and the best guesses at the proper one. */
+export async function searchWebSmart(q: string): Promise<Dish[]> {
+  const all = await loadCatalog()
+  const { vocab, names } = vocabFor(all)
+  const reading = interpret(q, vocab, names)
+  const tries = reading.variants.filter((v) => v.length >= 3).slice(0, 3)
+  const lists = await Promise.all(tries.map((t) => searchWeb(t)))
+  const seen = new Set<string>()
+  return lists.flat().filter((d) => (seen.has(d.id) ? false : (seen.add(d.id), true)))
 }
 
 // ---------- "not overly fancy" + preferences ----------

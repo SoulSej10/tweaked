@@ -2,6 +2,8 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { AVOID, CUISINES, EFFORTS, KINDS, toggle, type Effort, type Preferences } from '../lib/prefs'
 import { usePrefs } from '../prefs'
+import { Brand } from '../components/Brand'
+import { CookingPot, Hourglass, Lightning } from '@phosphor-icons/react'
 
 const STEPS = ['welcome', 'cuisines', 'kinds', 'effort', 'avoid'] as const
 
@@ -39,7 +41,7 @@ export default function Onboarding() {
       <section className="quiz-body rise" key={name}>
         {name === 'welcome' && (
           <>
-            <p className="quiz-emoji bounce" aria-hidden>🍳</p>
+            <Brand />
             <h1>Let's make this kitchen yours</h1>
             <p className="lead">Four quick taps and Tweaked will fill your home screen with easy dishes you will actually want to cook. You can change any of it later.</p>
           </>
@@ -80,7 +82,7 @@ export default function Onboarding() {
             <div className="options">
               {EFFORTS.map((e) => (
                 <button key={e.id} className={`option ${draft.effort === e.id ? 'on' : ''}`} aria-pressed={draft.effort === e.id} onClick={() => setDraft((d) => ({ ...d, effort: e.id as Effort }))}>
-                  <span className="tile-emoji" aria-hidden>{e.emoji}</span>
+                  <span className="tile-emoji" aria-hidden>{e.icon === 'lightning' ? <Lightning size={26} weight="duotone" /> : e.icon === 'pot' ? <CookingPot size={26} weight="duotone" /> : <Hourglass size={26} weight="duotone" />}</span>
                   <span><b>{e.label}</b><small>{e.hint}</small></span>
                 </button>
               ))}

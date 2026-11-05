@@ -6,6 +6,8 @@ import { dishEmoji, tileIndex } from '../lib/emoji'
 import { useFeedback } from '../feedback'
 import { useAsync, useTitle } from '../lib/hooks'
 import { addItems } from '../lib/shopping'
+import { BackLink } from '../components/Brand'
+import { ArrowLeft, CookingPot, Globe, ShoppingCart } from '@phosphor-icons/react'
 
 export default function DishPage() {
   const { id = '' } = useParams()
@@ -22,9 +24,9 @@ export default function DishPage() {
   if (loading) {
     return (
       <main className="page">
-        <header className="topbar"><Link to="/discover" className="btn ghost">← Back</Link></header>
+        <header className="topbar"><BackLink to="/discover" /></header>
         <div className="empty">
-          <p className="nudge-emoji bounce" aria-hidden>{fromWeb ? '🌐' : '🍳'}</p>
+          {fromWeb ? <Globe size={36} weight="duotone" className="empty-icon" aria-hidden /> : <CookingPot size={36} weight="duotone" className="empty-icon" aria-hidden />}
           <h2>{fromWeb ? 'Reading the page…' : 'Loading…'}</h2>
           {fromWeb && <p className="muted">Finding the ingredients and steps. This takes a few seconds.</p>}
         </div>
@@ -33,7 +35,7 @@ export default function DishPage() {
   }
   if (error || !dish) return (
     <main className="page">
-      <header className="topbar"><Link to="/discover" className="btn ghost">← Back</Link></header>
+      <header className="topbar"><BackLink to="/discover" /></header>
       <p className="error pad">{error ?? 'That dish is not available any more.'}</p>
       {originalUrl && <p className="pad"><a className="btn" href={originalUrl} target="_blank" rel="noreferrer">Open the original page ↗</a></p>}
     </main>
@@ -58,7 +60,7 @@ export default function DishPage() {
       <div className={`banner dthumb t${tileIndex(dish.name)}`}>
         <span className="demoji" aria-hidden>{dishEmoji(dish.name, [dish.category])}</span>
         {dish.thumb && <img src={thumbUrl(dish, 'large')} alt={dish.name} referrerPolicy="no-referrer" onError={(e) => (e.currentTarget.style.display = 'none')} />}
-        <Link to="/discover" className="float-back" aria-label="Back">←</Link>
+        <Link to="/discover" className="float-back" aria-label="Back"><ArrowLeft size={20} /></Link>
       </div>
 
       <section className="pad">
@@ -82,7 +84,7 @@ export default function DishPage() {
         </ul>
 
         <div className="row" style={{ marginTop: 10 }}>
-          <button className="btn" onClick={() => { const n = addItems(dish.ingredients.map((i) => `${i.measure} ${i.name}`.trim()), dish.name); setAdded(n); toast(n > 0 ? `Added ${n} to your shopping list` : 'Already on your shopping list') }}>🛒 Add to shopping list</button>
+          <button className="btn" onClick={() => { const n = addItems(dish.ingredients.map((i) => `${i.measure} ${i.name}`.trim()), dish.name); setAdded(n); toast(n > 0 ? `Added ${n} to your shopping list` : 'Already on your shopping list') }}><ShoppingCart size={18} aria-hidden /> Add to shopping list</button>
           {added !== null && <Link to="/shopping" className="small">{added > 0 ? `Added ${added} · view list` : 'Already on your list · view'}</Link>}
         </div>
 

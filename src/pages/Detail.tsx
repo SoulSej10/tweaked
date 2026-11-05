@@ -7,6 +7,7 @@ import { dishEmoji, tileIndex } from '../lib/emoji'
 import { useAsync, useSettings, useTitle } from '../lib/hooks'
 import { addItems } from '../lib/shopping'
 import { convertIngredient, formatIngredient, scaleAmount, type UnitSystem } from '../lib/parse'
+import { ArrowLeft, Heart, Package, ShareNetwork, ShoppingCart } from '@phosphor-icons/react'
 
 export default function Detail() {
   const { id = '' } = useParams()
@@ -114,10 +115,10 @@ export default function Detail() {
       <div className={`banner short dthumb t${tileIndex(recipe.title)} no-print`}>
         <span className="demoji" aria-hidden>{dishEmoji(recipe.title, recipe.tags)}</span>
         {cover && <img src={cover} alt={`${recipe.title}, as you cooked it`} onError={(e) => (e.currentTarget.style.display = 'none')} />}
-        <Link to="/recipes" className="float-back" aria-label="Back to recipes">←</Link>
+        <Link to="/recipes" className="float-back" aria-label="Back to recipes"><ArrowLeft size={20} /></Link>
         <div className="float-actions">
-          <button className={`float-btn ${favorite ? 'on' : ''}`} onClick={toggleFavorite} aria-pressed={favorite} aria-label={favorite ? 'Remove from favorites' : 'Add to favorites'}>{favorite ? '♥' : '♡'}</button>
-          <button className="float-btn" onClick={share} aria-label="Share this recipe">⤴</button>
+          <button className={`float-btn ${favorite ? 'on' : ''}`} onClick={toggleFavorite} aria-pressed={favorite} aria-label={favorite ? 'Remove from favorites' : 'Add to favorites'}><Heart size={20} weight={favorite ? 'fill' : 'regular'} /></button>
+          <button className="float-btn" onClick={share} aria-label="Share this recipe"><ShareNetwork size={20} /></button>
         </div>
       </div>
 
@@ -125,7 +126,7 @@ export default function Detail() {
         <h1 className="title">{recipe.title}</h1>
         <p className="chips-inline">
           <span className="pill">{recipe.cooked_count > 0 ? `Cooked ${recipe.cooked_count}×` : 'Not cooked yet'}</span>
-          {recipe.bring_from_home && <span className="pill alt">🍱 packed food</span>}
+          {recipe.bring_from_home && <span className="pill alt with-icon"><Package size={13} aria-hidden /> packed food</span>}
           {recipe.tags.slice(0, 4).map((t) => <span key={t} className="pill">#{t}</span>)}
         </p>
         {lastTweak && <p className="tweak">Last time: {lastTweak.tweak_note}</p>}
@@ -180,7 +181,7 @@ export default function Detail() {
         ) : <p className="muted">None yet. <Link to={`/recipe/${recipe.id}/edit`}>Add some</Link></p>}
         {shown?.ingredients.length ? (
           <div className="no-print row" style={{ marginTop: 10 }}>
-            <button className="btn" onClick={addToList}>🛒 Add to shopping list</button>
+            <button className="btn" onClick={addToList}><ShoppingCart size={18} aria-hidden /> Add to shopping list</button>
             {added !== null && <Link to="/shopping" className="small">{added > 0 ? `Added ${added} · view list` : 'Already on your list · view'}</Link>}
           </div>
         ) : null}

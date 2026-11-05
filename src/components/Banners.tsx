@@ -1,5 +1,6 @@
 import { useRegisterSW } from 'virtual:pwa-register/react'
 import { useOnline } from '../lib/hooks'
+import { ArrowsClockwise, WifiSlash } from '@phosphor-icons/react'
 
 /** Small notices pinned to the top: "you're offline" and "a new version is ready". */
 export function Banners() {
@@ -16,10 +17,10 @@ export function Banners() {
 
   return (
     <div className="pillbar" aria-live="polite">
-      {!online && <div className="pill-msg offline">You're offline. Saved recipes still open.</div>}
+      {!online && <div className="pill-msg offline"><WifiSlash size={16} aria-hidden /> You're offline. Saved recipes still open.</div>}
       {needRefresh && (
         <div className="pill-msg update">
-          A new version is ready.
+          <ArrowsClockwise size={16} aria-hidden /> A new version is ready.
           <button onClick={() => void updateServiceWorker(true)}>Reload</button>
         </div>
       )}

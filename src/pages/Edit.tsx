@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { addVersion, createRecipe, getRecipe, updateRecipeMeta, type RecipeFull } from '../lib/api'
 import { useAsync } from '../lib/hooks'
 import { detectSource, formatIngredient, formatSteps, importCaption, parseIngredients, parseSteps } from '../lib/parse'
@@ -7,12 +7,14 @@ import { dishToRecipe } from '../lib/discover'
 import { CUISINES, KINDS } from '../lib/prefs'
 import { importUrl, recipeToDish } from '../lib/web'
 import type { SourceType } from '../lib/types'
+import { Carrot, ClipboardText, Globe, ListNumbers, PencilSimple } from '@phosphor-icons/react'
+import { BackLink } from '../components/Brand'
 
 const SOURCES: { id: SourceType; label: string }[] = [
-  { id: 'own', label: '🏠 My own' },
-  { id: 'person', label: '👵 From someone' },
-  { id: 'reel', label: '🎬 Reel' },
-  { id: 'link', label: '🔗 Web link' },
+  { id: 'own', label: 'My own' },
+  { id: 'person', label: 'From someone' },
+  { id: 'reel', label: 'Reel' },
+  { id: 'link', label: 'Web link' },
 ]
 
 const normTag = (t: string) => t.trim().toLowerCase().replace(/^#/, '')
@@ -137,7 +139,7 @@ function Form({ full }: { full: RecipeFull | null }) {
   return (
     <main className="page with-bar">
       <header className="topbar">
-        <Link to={full ? `/recipe/${full.recipe.id}` : '/recipes'} className="btn ghost">← Back</Link>
+        <BackLink to={full ? `/recipe/${full.recipe.id}` : '/recipes'} />
         <h1>{editing ? 'Edit recipe' : 'New recipe'}</h1>
       </header>
 
@@ -149,14 +151,14 @@ function Form({ full }: { full: RecipeFull | null }) {
 
         {!editing && (
           <details className="fcard">
-            <summary>📋 Paste a caption or recipe text</summary>
+            <summary><ClipboardText size={18} aria-hidden /> Paste a caption or recipe text</summary>
             <p className="muted small">From Facebook, Instagram or TikTok: open the post, press and hold the caption to copy it, then paste it here. We pick out the ingredients, steps, hashtags and the link.</p>
             <textarea rows={5} placeholder="Paste a reel caption or recipe text" value={caption} onChange={(e) => setCaption(e.target.value)} />
             {linkOnly && !readable && <p className="callout-plain">That's just a link. Facebook and Instagram only show recipes to their own apps, so Tweaked can't read the post for you. <a href={pastedLink.url ?? '#'} target="_blank" rel="noreferrer">Open it</a>, copy the caption, and paste that here. We'll keep the link as the source.</p>}
             {readable && <p className="callout-plain">That looks like a web page. Tweaked can read the recipe from it for you.</p>}
             {importErr && <p className="error" role="alert">{importErr}</p>}
             {readable ? (
-              <button type="button" className="btn primary" onClick={importPage} disabled={importing}>{importing ? 'Reading the page…' : '🌐 Import this page'}</button>
+              <button type="button" className="btn primary" onClick={importPage} disabled={importing}>{importing ? 'Reading the page…' : <><Globe size={18} aria-hidden /> Import this page</>}</button>
             ) : (
               <button type="button" className="btn" onClick={runImport} disabled={!caption.trim()}>{linkOnly ? 'Save the link as the source' : 'Fill in the form'}</button>
             )}
@@ -169,16 +171,16 @@ function Form({ full }: { full: RecipeFull | null }) {
 
         <section className="fcard">
           <label>
-            <span>🧂 Ingredients <small>{ingCount > 0 ? `${ingCount} listed` : 'one per line'}</small></span>
+            <span className="with-icon"><Carrot size={18} aria-hidden /> Ingredients <small>{ingCount > 0 ? `${ingCount} listed` : 'one per line'}</small></span>
             <textarea rows={6} value={ingText} placeholder={'2 cups rice\n3 cloves garlic\n1 tbsp soy sauce'} onChange={(e) => setIngText(e.target.value)} />
           </label>
           <label>
-            <span>👩‍🍳 Steps <small>{stepCount > 0 ? `${stepCount} steps` : 'one per line, “simmer 10 min” adds a timer'}</small></span>
+            <span className="with-icon"><ListNumbers size={18} aria-hidden /> Steps <small>{stepCount > 0 ? `${stepCount} steps` : 'one per line, “simmer 10 min” adds a timer'}</small></span>
             <textarea rows={6} value={stepText} placeholder={'Fry the garlic until golden\nAdd the rice and stir-fry for 3 min'} onChange={(e) => setStepText(e.target.value)} />
           </label>
           {editing && (
             <label>
-              <span>✏️ What changed? <small>optional</small></span>
+              <span className="with-icon"><PencilSimple size={18} aria-hidden /> What changed? <small>optional</small></span>
               <input value={changeNote} onChange={(e) => setChangeNote(e.target.value)} placeholder="less soy sauce, added chili" />
             </label>
           )}
@@ -207,7 +209,7 @@ function Form({ full }: { full: RecipeFull | null }) {
               <button type="button" className="btn" onClick={() => setServings((servings ?? 0) + 1)} aria-label="More servings">+</button>
             </div>
           </div>
-          <label className="check"><input type="checkbox" checked={bring} onChange={(e) => setBring(e.target.checked)} /> 🍱 Good as packed food (bring from home)</label>
+          <label className="check"><input type="checkbox" checked={bring} onChange={(e) => setBring(e.target.checked)} /> Good as packed food (bring from home)</label>
         </section>
 
         <section className="fcard">

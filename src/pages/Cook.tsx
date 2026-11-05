@@ -5,6 +5,7 @@ import { useAsync, useSettings, useWakeLock } from '../lib/hooks'
 import { formatDuration, formatIngredient } from '../lib/parse'
 import { uploadDishPhoto } from '../lib/photo'
 import { useDictation } from '../lib/speech'
+import { ArrowLeft, ArrowRight, Camera, Microphone, X } from '@phosphor-icons/react'
 
 /** Counts down against the clock, so it stays right if the phone sleeps or the tab is in the background. */
 function Timer({ seconds, vibrate }: { seconds: number; vibrate: boolean }) {
@@ -119,11 +120,11 @@ export default function Cook() {
           <div className="row">
             {dictation.supported && (
               <button type="button" className={`btn ${dictation.listening ? 'primary' : ''}`} onClick={dictation.toggle} aria-pressed={dictation.listening}>
-                {dictation.listening ? '● Listening… tap to stop' : '🎤 Say it'}
+                {dictation.listening ? <><Microphone size={18} weight="fill" aria-hidden /> Listening… tap to stop</> : <><Microphone size={18} aria-hidden /> Say it</>}
               </button>
             )}
             <label className="btn photo-pick">
-              {photo ? '📷 Photo added' : '📷 Add photo'}
+              <><Camera size={18} weight={photo ? 'fill' : 'regular'} aria-hidden /> {photo ? 'Photo added' : 'Add photo'}</>
               <input type="file" accept="image/*" capture="environment" hidden onChange={(e) => setPhoto(e.target.files?.[0] ?? null)} />
             </label>
           </div>
@@ -165,7 +166,7 @@ export default function Cook() {
       }}
     >
       <header className="bar">
-        <Link to={`/recipe/${recipe.id}`} className="btn ghost">✕ Exit</Link>
+        <Link to={`/recipe/${recipe.id}`} className="btn ghost"><X size={18} aria-hidden /> Exit</Link>
         <span className="muted">Step {i + 1} / {steps.length}</span>
         <button className="btn" onClick={() => setShowIng(!showIng)} aria-expanded={showIng}>Ingredients</button>
       </header>
@@ -201,11 +202,11 @@ export default function Cook() {
       )}
 
       <footer className="nav">
-        <button className="btn big" onClick={() => setI(i - 1)} disabled={i === 0}>← Back</button>
+        <button className="btn big" onClick={() => setI(i - 1)} disabled={i === 0}><ArrowLeft size={20} aria-hidden /> Back</button>
         {last ? (
           <button className="btn primary big" onClick={() => setFinished(true)}>Done</button>
         ) : (
-          <button className="btn primary big" onClick={() => setI(i + 1)}>Next →</button>
+          <button className="btn primary big" onClick={() => setI(i + 1)}>Next <ArrowRight size={20} aria-hidden /></button>
         )}
       </footer>
     </main>

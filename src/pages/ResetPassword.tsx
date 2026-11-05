@@ -3,6 +3,8 @@ import { useAuth } from '../auth'
 import { useFeedback } from '../feedback'
 import { friendlyAuthError, passwordProblem } from '../lib/authErrors'
 import { supabase } from '../lib/supabase'
+import { Brand } from '../components/Brand'
+import { Eye, EyeSlash } from '@phosphor-icons/react'
 
 /** Shown after someone opens the link in a "reset your password" email. */
 export default function ResetPassword() {
@@ -37,13 +39,13 @@ export default function ResetPassword() {
 
   return (
     <main className="login">
-      <p className="quiz-emoji" aria-hidden>🔑</p>
+      <Brand size="sm" />
       <h1>Choose a new password</h1>
       <p className="muted">Pick something you have not used on other sites.</p>
       <form onSubmit={submit} className="stack" noValidate>
         <div className="pw">
           <input type={show ? 'text' : 'password'} required autoFocus placeholder="New password (8+ characters, letters and numbers)" aria-label="New password" autoComplete="new-password" value={password} onChange={(e) => setPassword(e.target.value)} />
-          <button type="button" className="pw-toggle" onClick={() => setShow(!show)} aria-pressed={show}>{show ? 'Hide' : 'Show'}</button>
+          <button type="button" className="pw-toggle" onClick={() => setShow(!show)} aria-pressed={show} aria-label={show ? 'Hide password' : 'Show password'}>{show ? <EyeSlash size={20} aria-hidden /> : <Eye size={20} aria-hidden />}</button>
         </div>
         <input type={show ? 'text' : 'password'} required placeholder="Type it again" aria-label="Confirm new password" autoComplete="new-password" value={confirm} onChange={(e) => setConfirm(e.target.value)} />
         {msg && <p className="error" role="alert">{msg}</p>}

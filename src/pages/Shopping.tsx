@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import { Shell } from '../components/Shell'
 import { useFeedback } from '../feedback'
 import { addItems, clearAll, clearDone, removeItem, toggleItem, useShopping } from '../lib/shopping'
+import { Check, ShareNetwork, ShoppingCart, X } from '@phosphor-icons/react'
 
 export default function Shopping() {
   const items = useShopping()
@@ -38,7 +39,7 @@ export default function Shopping() {
     <Shell>
       <header className="topbar">
         <h1>Shopping list</h1>
-        {todo.length > 0 && <button className="btn" onClick={share}>{copied ? 'Copied ✓' : 'Share'}</button>}
+        {todo.length > 0 && <button className="btn" onClick={share}>{copied ? <><Check size={18} aria-hidden /> Copied</> : <><ShareNetwork size={18} aria-hidden /> Share</>}</button>}
       </header>
 
       <form className="addrow" onSubmit={add}>
@@ -48,7 +49,7 @@ export default function Shopping() {
 
       {items.length === 0 && (
         <div className="empty">
-          <p className="nudge-emoji" aria-hidden>🛒</p>
+          <ShoppingCart size={36} weight="duotone" className="empty-icon" aria-hidden />
           <h2>Nothing to buy yet</h2>
           <p className="muted">Open any recipe and tap “Add to shopping list”, or type items above.</p>
           <Link className="btn" to="/discover">Find something to cook</Link>
@@ -60,7 +61,7 @@ export default function Shopping() {
           {todo.map((i) => (
             <li key={i.id}>
               <label className="check"><input type="checkbox" checked={false} onChange={() => toggleItem(i.id)} /><span>{i.text}{i.from && <small>{i.from}</small>}</span></label>
-              <button className="x" onClick={() => removeItem(i.id)} aria-label={`Remove ${i.text}`}>×</button>
+              <button className="x" onClick={() => removeItem(i.id)} aria-label={`Remove ${i.text}`}><X size={18} aria-hidden /></button>
             </li>
           ))}
         </ul>
@@ -73,7 +74,7 @@ export default function Shopping() {
             {done.map((i) => (
               <li key={i.id}>
                 <label className="check"><input type="checkbox" checked onChange={() => toggleItem(i.id)} /><span>{i.text}</span></label>
-                <button className="x" onClick={() => removeItem(i.id)} aria-label={`Remove ${i.text}`}>×</button>
+                <button className="x" onClick={() => removeItem(i.id)} aria-label={`Remove ${i.text}`}><X size={18} aria-hidden /></button>
               </li>
             ))}
           </ul>

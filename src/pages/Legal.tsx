@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom'
 import { useAuth } from '../auth'
 import { useTitle } from '../lib/hooks'
+import { BackLink } from '../components/Brand'
 
 const UPDATED = '5 November 2026'
 const CONTACT = 'https://github.com/SoulSej10/tweaked/issues'
@@ -11,7 +12,7 @@ export default function Legal({ kind }: { kind: 'terms' | 'privacy' }) {
   return (
     <main className="page legal">
       <header className="topbar">
-        <Link to={session ? '/settings' : '/'} className="btn ghost">← Back</Link>
+        <BackLink to={session ? '/settings' : '/'} />
         <h1>{kind === 'terms' ? 'Terms of Use' : 'Privacy Policy'}</h1>
       </header>
       <article className="pad">

@@ -5,6 +5,7 @@ import { listRecipes } from '../lib/api'
 import { dishEmoji, tileIndex } from '../lib/emoji'
 import { useAsync } from '../lib/hooks'
 import type { RecipeCard } from '../lib/types'
+import { BookOpen, DiceFive, Heart, MagnifyingGlass, Package } from '@phosphor-icons/react'
 
 type Filter = 'all' | 'fav' | 'recent' | 'never' | 'home'
 type Sort = 'updated' | 'az' | 'most' | 'cooked'
@@ -68,17 +69,20 @@ export default function Library() {
     <Shell>
       <header className="topbar">
         <h1>My recipes</h1>
-        <button className="icon-btn" onClick={surprise} disabled={!data?.length} aria-label="Surprise me" title="Surprise me">🎲</button>
+        <button className="icon-btn" onClick={surprise} disabled={!data?.length} aria-label="Surprise me" title="Surprise me"><DiceFive size={20} /></button>
       </header>
 
       <div className="searchbar">
-        <input
+        <div className="searchfield">
+          <MagnifyingGlass size={18} aria-hidden />
+          <input
           type="search"
           placeholder={pantry ? 'I have: rice, egg, garlic' : 'Search name or ingredient'}
           value={q}
           onChange={(e) => setQ(e.target.value)}
           aria-label="Search recipes"
         />
+        </div>
       </div>
       <label className="switch">
         <input type="checkbox" checked={pantry} onChange={(e) => setPantry(e.target.checked)} />
@@ -98,8 +102,8 @@ export default function Library() {
       </div>
 
       <div className="chips" role="group" aria-label="Filters">
-        {([['all', 'All'], ['fav', '♥ Favorites'], ['recent', 'Cooked recently'], ['never', 'Never cooked'], ['home', 'Bring from home']] as const).map(([k, label]) => (
-          <button key={k} className={`chip ${filter === k ? 'on' : ''}`} onClick={() => setFilter(k)}>{label}</button>
+        {([['all', 'All'], ['fav', 'Favorites'], ['recent', 'Cooked recently'], ['never', 'Never cooked'], ['home', 'Bring from home']] as const).map(([k, label]) => (
+          <button key={k} className={`chip ${filter === k ? 'on' : ''}`} onClick={() => setFilter(k)}>{k === 'fav' && <Heart size={14} weight="fill" aria-hidden />}{label}</button>
         ))}
         {tags.map((t) => (
           <button key={t} className={`chip alt ${tag === t ? 'on' : ''}`} onClick={() => setTag(tag === t ? null : t)}>#{t}</button>
@@ -110,7 +114,7 @@ export default function Library() {
       {error && <p className="error pad">{error}</p>}
       {!loading && !error && data?.length === 0 && (
         <div className="empty">
-          <p className="nudge-emoji" aria-hidden>📖</p>
+          <BookOpen size={36} weight="duotone" className="empty-icon" aria-hidden />
           <h2>No recipes yet</h2>
           <p className="muted">Save a dish you like from Discover, or add your own with just a title.</p>
           <div className="row center wrap"><Link className="btn primary" to="/discover">Browse ideas</Link><Link className="btn" to="/new">Add my own</Link></div>
@@ -124,12 +128,12 @@ export default function Library() {
             <Link to={`/recipe/${r.id}`} className="rcard">
               <span className={`rtile t${tileIndex(r.title)}`} aria-hidden>{dishEmoji(r.title, r.tags)}</span>
               <span className="rbody">
-                <b>{r.favorite && <span className="heart" aria-label="Favorite">♥ </span>}{r.title}</b>
+                <b>{r.favorite && <Heart size={13} weight="fill" className="heart" aria-label="Favorite" />} {r.title}</b>
                 <span className="meta">{ago(r.last_cooked_at)}{r.cooked_count > 0 ? ` · ${r.cooked_count}×` : ''}</span>
                 {r.lastTweak && <span className="tweak">Last time: {r.lastTweak}</span>}
                 {(r.tags.length > 0 || r.bring_from_home) && (
                   <span className="tags">
-                    {r.bring_from_home && <span>🍱 home</span>}
+                    {r.bring_from_home && <span className="with-icon"><Package size={12} aria-hidden /> packed</span>}
                     {r.tags.slice(0, 3).map((t) => <span key={t}>#{t}</span>)}
                   </span>
                 )}

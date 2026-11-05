@@ -3,6 +3,8 @@ import { Link } from 'react-router-dom'
 import { errorFromAddress, friendlyAuthError, isEmail, passwordProblem } from '../lib/authErrors'
 import { useTitle } from '../lib/hooks'
 import { supabase } from '../lib/supabase'
+import { Brand } from '../components/Brand'
+import { Eye, EyeSlash } from '@phosphor-icons/react'
 
 type Mode = 'in' | 'up' | 'forgot' | 'sent-signup' | 'sent-reset'
 
@@ -30,7 +32,7 @@ function PasswordInput(props: { value: string; onChange: (v: string) => void; pl
         onChange={(e) => props.onChange(e.target.value)}
       />
       <button type="button" className="pw-toggle" onClick={() => setShow(!show)} aria-label={show ? 'Hide password' : 'Show password'} aria-pressed={show}>
-        {show ? 'Hide' : 'Show'}
+        {show ? <EyeSlash size={20} aria-hidden /> : <Eye size={20} aria-hidden />}
       </button>
     </div>
   )
@@ -152,8 +154,7 @@ export default function Login() {
 
   return (
     <main className="login">
-      <p className="quiz-emoji bounce" aria-hidden>🍳</p>
-      <h1>Tweaked</h1>
+      <Brand />
 
       {sent ? (
         <section className="stack" aria-live="polite">

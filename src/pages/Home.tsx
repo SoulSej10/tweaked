@@ -10,6 +10,7 @@ import { historyFrom } from '../lib/history'
 import { useAsync } from '../lib/hooks'
 import { useShopping } from '../lib/shopping'
 import { usePrefs } from '../prefs'
+import { BookmarkSimple, CookingPot, DiceFive, PencilSimpleLine, ShoppingCart } from '@phosphor-icons/react'
 
 function greeting(hour: number) {
   if (hour < 5) return 'Late-night snack?'
@@ -65,9 +66,9 @@ export default function Home() {
       <header className="topbar">
         <div>
           <p className="eyebrow">{greeting(new Date().getHours())}</p>
-          <h1 className="hello">Hi {name ? name.split(' ')[0] : firstName(session?.user.email)} <span className="wave" aria-hidden>👋</span></h1>
+          <h1 className="hello">Hi {name ? name.split(' ')[0] : firstName(session?.user.email)}</h1>
         </div>
-        <button className="icon-btn" onClick={() => setBump((b) => b + 1)} aria-label="Shuffle suggestions" title="Shuffle suggestions">🎲</button>
+        <button className="icon-btn" onClick={() => setBump((b) => b + 1)} aria-label="Shuffle suggestions" title="Shuffle suggestions"><DiceFive size={20} /></button>
       </header>
 
       <section className="stats" aria-label="Your cooking">
@@ -77,10 +78,10 @@ export default function Home() {
       </section>
 
       <nav className="quick" aria-label="Quick actions">
-        <Link to="/shopping" className="qa"><span aria-hidden>🛒</span><span>Shopping list</span>{shopping > 0 && <span className="badge">{shopping}</span>}</Link>
-        <Link to="/recipes?pantry=1" className="qa"><span aria-hidden>🥕</span><span>What can I make?</span></Link>
-        <button className="qa" onClick={() => (hero ? nav(`/dish/${encodeURIComponent(hero.id)}`) : setBump((b) => b + 1))}><span aria-hidden>🎲</span><span>Surprise me</span></button>
-        <Link to="/new" className="qa"><span aria-hidden>✍️</span><span>Add recipe</span></Link>
+        <Link to="/shopping" className="qa"><ShoppingCart size={22} aria-hidden /><span>Shopping list</span>{shopping > 0 && <span className="badge">{shopping}</span>}</Link>
+        <Link to="/recipes?pantry=1" className="qa"><CookingPot size={22} aria-hidden /><span>What can I make?</span></Link>
+        <button className="qa" onClick={() => (hero ? nav(`/dish/${encodeURIComponent(hero.id)}`) : setBump((b) => b + 1))}><DiceFive size={22} aria-hidden /><span>Surprise me</span></button>
+        <Link to="/new" className="qa"><PencilSimpleLine size={22} aria-hidden /><span>Add recipe</span></Link>
       </nav>
 
       {hero ? (
@@ -105,7 +106,7 @@ export default function Home() {
 
       {!recipes.loading && mine.length === 0 && (
         <section className="nudge rise">
-          <p className="nudge-emoji" aria-hidden>🍳</p>
+          <CookingPot size={36} weight="duotone" className="empty-icon" aria-hidden />
           <h2>Start your cookbook</h2>
           <p className="muted">Save a dish from below, or add one you already make. Each time you cook it, tell Tweaked what you changed.</p>
           <Link className="btn primary" to="/new">Add my own recipe</Link>
@@ -114,7 +115,7 @@ export default function Home() {
 
       {tryNext && mine.length > 0 && (
         <Link to={`/recipe/${tryNext.id}`} className="callout rise">
-          <span aria-hidden>📌</span>
+          <BookmarkSimple size={18} weight="fill" aria-hidden />
           <span><b>Saved but never cooked:</b> {tryNext.title}</span>
           <span className="chev" aria-hidden>›</span>
         </Link>

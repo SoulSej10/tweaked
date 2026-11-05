@@ -70,9 +70,9 @@ export const AVOID = [
 ] as const
 
 export const EFFORTS = [
-  { id: 'quick', label: 'Quick & few ingredients', hint: 'Around 7 ingredients or fewer', emoji: '⚡' },
-  { id: 'easy', label: 'Easy weeknight cooking', hint: 'Up to about 10 ingredients', emoji: '🍳' },
-  { id: 'any', label: 'Happy to spend more time', hint: 'Still nothing fancy', emoji: '🍲' },
+  { id: 'quick', label: 'Quick & few ingredients', hint: 'Around 7 ingredients or fewer', icon: 'lightning' },
+  { id: 'easy', label: 'Easy weeknight cooking', hint: 'Up to about 10 ingredients', icon: 'pot' },
+  { id: 'any', label: 'Happy to spend more time', hint: 'Still nothing fancy', icon: 'hourglass' },
 ] as const
 
 export function normalizePrefs(raw: unknown): Preferences {

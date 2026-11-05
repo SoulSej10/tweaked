@@ -1,14 +1,16 @@
+import { ArrowSquareOut, DiceFive, Link as LinkIcon, MagnifyingGlass, Plus, Sparkle } from '@phosphor-icons/react'
 import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { DishCard } from '../components/DishCard'
 import { Shell } from '../components/Shell'
-import { browseDishes, conflicts, isSimple, loadCatalog, searchCatalog, searchWeb, urlDishId, type Browse, type Dish } from '../lib/discover'
-import { webSearch, type WebResult } from '../lib/web'
+import { browseDishes, conflicts, isSimple, loadCatalog, searchCatalog, searchWebSmart, urlDishId, type Browse, type Dish, type SearchOutcome } from '../lib/discover'
 import { useAsync } from '../lib/hooks'
 import { CUISINES, KINDS } from '../lib/prefs'
+import { webSearch, type WebResult } from '../lib/web'
 import { usePrefs } from '../prefs'
 
 const PAGE = 24
+const NO_OUTCOME: SearchOutcome = { dishes: [], closest: false, meant: null, similar: [], variants: [] }
 
 function useDebounced<T>(value: T, ms: number): T {
   const [v, setV] = useState(value)
@@ -39,9 +41,9 @@ export default function Discover() {
   }, [])
 
   const browse = useAsync(() => browseDishes(pick), [JSON.stringify(pick), spin])
-  // Each result remembers which query it answers, so we never show "nothing found" for a query that is still loading.
-  const local = useAsync(async () => ({ q: term, dishes: searching ? await searchCatalog(term) : ([] as Dish[]) }), [term])
-  const web = useAsync(async () => ({ q: webTerm, dishes: webTerm.length >= 3 ? await searchWeb(webTerm) : ([] as Dish[]) }), [webTerm])
+  // Each result remembers which query it answers, so we never say "nothing found" for a query that is still loading.
+  const local = useAsync(async () => ({ q: term, out: searching ? await searchCatalog(term) : NO_OUTCOME }), [term])
+  const web = useAsync(async () => ({ q: webTerm, dishes: webTerm.length >= 3 ? await searchWebSmart(webTerm) : ([] as Dish[]) }), [webTerm])
   const localReady = local.data?.q === term
   const webReady = web.data?.q === webTerm && webTerm === term
 
@@ -49,15 +51,17 @@ export default function Discover() {
     () => (browse.data ?? []).filter((d) => (!simple || isSimple(d, prefs.effort)) && !conflicts(d, prefs.avoid)),
     [browse.data, simple, prefs.effort, prefs.avoid],
   )
+
   // When searching, do not hide results behind "keep it simple": people asked for that dish by name.
+  const outcome = local.data?.out ?? NO_OUTCOME
   const allowed = (d: Dish) => showHidden || !conflicts(d, prefs.avoid)
-  const localAll = local.data?.dishes ?? []
-  const localList = useMemo(() => localAll.filter(allowed), [local.data, prefs.avoid, showHidden]) // eslint-disable-line react-hooks/exhaustive-deps
-  const localIds = new Set(localAll.map((d) => d.id))
-  const webAll = (web.data?.dishes ?? []).filter((d) => !localIds.has(d.id))
+  const localList = outcome.dishes.filter(allowed)
+  const seen = new Set(outcome.dishes.map((d) => d.id))
+  const webAll = (web.data?.dishes ?? []).filter((d) => !seen.has(d.id))
   const webList = webAll.filter(allowed)
-  // Dishes the user's own "skip" choices are hiding; say so instead of claiming nothing exists.
-  const hiddenCount = localAll.length + webAll.length - localList.length - webList.length
+  const similarList = outcome.similar.filter((d) => allowed(d) && !seen.has(d.id)).slice(0, 8)
+  // Dishes the user's own "skip" choices are hiding; say so instead of pretending nothing exists.
+  const hiddenCount = outcome.dishes.length + webAll.length - localList.length - webList.length
 
   const choose = (p: Browse) => {
     setPick(p)
@@ -65,25 +69,26 @@ export default function Discover() {
     setShown(PAGE)
   }
 
-  const webPending = searching && !webReady
-  const nothing = searching && localReady && webReady && localList.length === 0 && webList.length === 0 && hiddenCount === 0
+  const ready = localReady && webReady
   const list = browseList.slice(0, shown)
-  const googleUrl = `https://www.google.com/search?q=${encodeURIComponent(`${term} recipe`)}`
 
   return (
     <Shell>
       <header className="topbar">
         <h1>Discover</h1>
-        <button className="icon-btn" onClick={() => { choose({ type: 'mix' }); setSpin((s) => s + 1) }} aria-label="Surprise me">🎲</button>
+        <button className="icon-btn" onClick={() => { choose({ type: 'mix' }); setSpin((s) => s + 1) }} aria-label="Surprise me"><DiceFive size={20} /></button>
       </header>
 
       <form className="searchbar" onSubmit={(e) => e.preventDefault()}>
-        <input type="search" value={q} onChange={(e) => { setQ(e.target.value); setShowHidden(false) }} placeholder="Search any dish, or paste a recipe link" aria-label="Search dishes" enterKeyHint="search" />
+        <div className="searchfield">
+          <MagnifyingGlass size={18} aria-hidden />
+          <input type="search" value={q} onChange={(e) => { setQ(e.target.value); setShowHidden(false) }} placeholder="Search a dish, however you spell it" aria-label="Search dishes" enterKeyHint="search" />
+        </div>
       </form>
 
       {isLink && (
         <div className="empty">
-          <p className="nudge-emoji" aria-hidden>🔗</p>
+          <LinkIcon size={34} className="empty-icon" aria-hidden />
           <h2>Import this recipe page</h2>
           <p className="muted">Tweaked reads the ingredients and steps from the page, so you can save and tweak your own version.</p>
           <Link className="btn primary" to={`/dish/${encodeURIComponent(urlDishId(q.trim()))}`}>Read this page</Link>
@@ -93,14 +98,14 @@ export default function Discover() {
       {!searching && !isLink && (
         <>
           <div className="chips" role="group" aria-label="Cuisine">
-            <button className={`chip ${pick.type === 'mix' ? 'on' : ''}`} onClick={() => choose({ type: 'mix' })}>🎲 Mix</button>
+            <button className={`chip ${pick.type === 'mix' ? 'on' : ''}`} onClick={() => choose({ type: 'mix' })}>Mix</button>
             {CUISINES.map((c) => (
               <button key={c.id} className={`chip ${pick.type === 'cuisine' && pick.id === c.id ? 'on' : ''}`} onClick={() => choose({ type: 'cuisine', id: c.id })}>{c.flag} {c.label}</button>
             ))}
           </div>
           <div className="chips" role="group" aria-label="Kind of dish">
             {KINDS.map((k) => (
-              <button key={k.id} className={`chip alt ${pick.type === 'kind' && pick.id === k.id ? 'on' : ''}`} onClick={() => choose({ type: 'kind', id: k.id })}>{k.emoji} {k.label}</button>
+              <button key={k.id} className={`chip alt ${pick.type === 'kind' && pick.id === k.id ? 'on' : ''}`} onClick={() => choose({ type: 'kind', id: k.id })}>{k.label}</button>
             ))}
           </div>
           <label className="switch">
@@ -113,40 +118,47 @@ export default function Discover() {
       {searching ? (
         <>
           {!localReady && localList.length === 0 && <Skeletons n={4} />}
+
+          {localReady && outcome.meant && (
+            <p className="pad status meant">Showing results for <b>{outcome.meant}</b></p>
+          )}
+
           {localList.length > 0 && (
             <>
-              <div className="sec-head"><h2>In Tweaked ({localList.length})</h2></div>
+              <div className="sec-head">
+                <div>
+                  <h2>{outcome.closest ? 'Closest matches' : 'In Tweaked'} <span className="count">{localList.length}</span></h2>
+                  {outcome.closest && <p className="muted small">Nothing is named exactly “{term}”, but these are close.</p>}
+                </div>
+              </div>
               <div className="grid2c">{localList.slice(0, 30).map((d) => <DishCard key={d.id} dish={d} />)}</div>
             </>
           )}
+
           {webList.length > 0 && (
             <>
               <div className="sec-head"><div><h2>More from the web</h2><p className="muted small">Wikibooks Cookbook, free to use</p></div></div>
               <div className="grid2c">{webList.map((d) => <DishCard key={d.id} dish={d} />)}</div>
             </>
           )}
-          {webPending && <p className="muted small pad status">Searching the web for more…</p>}
-          {hiddenCount > 0 && !showHidden && localReady && webReady && (
+
+          {localReady && similarList.length > 0 && (
+            <>
+              <div className="sec-head"><div><h2>Similar dishes</h2><p className="muted small">Not the same, but in the same spirit</p></div></div>
+              <div className="rail">{similarList.map((d) => <DishCard key={d.id} dish={d} />)}</div>
+            </>
+          )}
+
+          {!webReady && <p className="muted small pad status">Searching the web for more…</p>}
+
+          {hiddenCount > 0 && !showHidden && ready && (
             <p className="pad status muted small">
               {hiddenCount} {hiddenCount === 1 ? 'dish is' : 'dishes are'} hidden because of what you skip ({prefs.avoid.join(', ')}).{' '}
               <button className="link inline" onClick={() => setShowHidden(true)}>Show {hiddenCount === 1 ? 'it' : 'them'} anyway</button>
             </p>
           )}
-          {searching && localReady && webReady && <WebSearch term={term} />}
-          {nothing && (
-            <div className="empty">
-              <p className="nudge-emoji" aria-hidden>🔎</p>
-              <h2>No “{term}” yet</h2>
-              <p className="muted">It isn't in our collections. You can still keep it: add it yourself, or find a recipe online and paste it in.</p>
-              <div className="row center wrap">
-                <Link className="btn primary" to={`/new?title=${encodeURIComponent(term)}`}>Add “{term}” myself</Link>
-                <a className="btn" href={googleUrl} target="_blank" rel="noreferrer">Search the web ↗</a>
-              </div>
-            </div>
-          )}
-          {!nothing && localReady && webReady && (
-            <p className="pad status muted small">Can't see the one you want? <Link to={`/new?title=${encodeURIComponent(term)}`}>Add “{term}” yourself</Link> or <a href={googleUrl} target="_blank" rel="noreferrer">search the web</a>.</p>
-          )}
+
+          {ready && <CantFind term={term} meant={outcome.meant} none={localList.length + webList.length + similarList.length === 0} />}
         </>
       ) : isLink ? null : (
         <>
@@ -165,46 +177,51 @@ export default function Discover() {
   )
 }
 
-/** Search the whole web with AI (the server runs the search; it costs one daily lookup, so it only runs when asked). */
-function WebSearch({ term }: { term: string }) {
-  const [state, setState] = useState<{ term: string; status: 'loading' | 'done' | 'error'; results: WebResult[]; message?: string }>({ term, status: 'done', results: [] })
-  const [asked, setAsked] = useState<string | null>(null)
-  const current = asked === term && state.term === term ? state : null
+/**
+ * Always the last thing on a search: a way forward when the dish is not here. Add it yourself,
+ * search the open web, or (when switched on) ask AI to search for recipe pages.
+ */
+function CantFind({ term, meant, none }: { term: string; meant: string | null; none: boolean }) {
+  const [state, setState] = useState<{ term: string; status: 'loading' | 'done' | 'error'; results: WebResult[]; message?: string } | null>(null)
+  const current = state && state.term === term ? state : null
+  const googleUrl = `https://www.google.com/search?q=${encodeURIComponent(`${meant ?? term} recipe`)}`
 
   async function run() {
-    setAsked(term)
     setState({ term, status: 'loading', results: [] })
     try {
-      const r = await webSearch(term)
+      const r = await webSearch(meant ?? term)
       setState({ term, status: 'done', results: r.results })
     } catch (e) {
       setState({ term, status: 'error', results: [], message: (e as Error).message })
     }
   }
 
-  if (!current) {
-    return (
-      <div className="webcard">
-        <p><b>🌐 Can't find it? Search the whole web.</b></p>
-        <p className="muted small">AI looks for “{term}” on recipe sites and Tweaked reads the one you pick. Uses 1 of your 20 daily web searches.</p>
-        <button className="btn primary" onClick={run}>Search the web for “{term}”</button>
-      </div>
-    )
-  }
-  if (current.status === 'loading') return <p className="muted small pad status">Searching the web…</p>
-  if (current.status === 'error') return <p className="error pad status" role="alert">{current.message}</p>
-  if (current.results.length === 0) return <p className="muted small pad status">No recipe pages found for “{term}”. Try different words.</p>
   return (
-    <>
-      <div className="sec-head"><div><h2>From the web</h2><p className="muted small">Tap one and Tweaked reads the recipe</p></div></div>
-      <ul className="webres">
-        {current.results.map((r) => (
-          <li key={r.url}>
-            <Link to={`/dish/${encodeURIComponent(urlDishId(r.url))}`}><b>{r.title}</b><span>{r.site}</span></Link>
-          </li>
-        ))}
-      </ul>
-    </>
+    <section className="cantfind" aria-label="Can't find it?">
+      <h2>{none ? `We couldn't find “${term}”` : "Can't find it?"}</h2>
+      <p className="muted">
+        {none ? 'It is not in our collections yet. ' : ''}
+        You can keep it anyway: add it yourself, or find a recipe online and paste the link or caption in.
+      </p>
+      <div className="cantfind-actions">
+        <Link className="btn primary" to={`/new?title=${encodeURIComponent(meant ?? term)}`}><Plus size={18} /> Add “{meant ?? term}” myself</Link>
+        <a className="btn" href={googleUrl} target="_blank" rel="noreferrer"><ArrowSquareOut size={18} /> Search online</a>
+        <button className="btn" onClick={run} disabled={current?.status === 'loading'}><Sparkle size={18} /> {current?.status === 'loading' ? 'Searching…' : 'Ask AI to search the web'}</button>
+      </div>
+      <p className="muted small">AI search uses 1 of your 20 daily web lookups.</p>
+
+      {current?.status === 'error' && <p className="error" role="alert">{current.message}</p>}
+      {current?.status === 'done' && current.results.length === 0 && <p className="muted small">No recipe pages found. Try different words.</p>}
+      {current?.status === 'done' && current.results.length > 0 && (
+        <ul className="webres">
+          {current.results.map((r) => (
+            <li key={r.url}>
+              <Link to={`/dish/${encodeURIComponent(urlDishId(r.url))}`}><b>{r.title}</b><span>{r.site}</span></Link>
+            </li>
+          ))}
+        </ul>
+      )}
+    </section>
   )
 }
 

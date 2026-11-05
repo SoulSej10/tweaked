@@ -10,6 +10,7 @@ import Home from './pages/Home'
 import Legal from './pages/Legal'
 import Login from './pages/Login'
 import { Navigate } from 'react-router-dom'
+import { CookingPot } from '@phosphor-icons/react'
 const Compare = lazy(() => import('./pages/Compare'))
 const Cook = lazy(() => import('./pages/Cook'))
 const Detail = lazy(() => import('./pages/Detail'))
@@ -25,7 +26,7 @@ const Shopping = lazy(() => import('./pages/Shopping'))
 const Share = lazy(() => import('./pages/Share'))
 
 const Splash = () => (
-  <main className="splash"><p className="splash-emoji bounce" aria-hidden>🍳</p><p className="muted">Warming up the pan…</p></main>
+  <main className="splash"><CookingPot size={44} weight="duotone" className="splash-icon" aria-hidden /><p className="muted">Warming up the pan…</p></main>
 )
 
 /** Every screen starts at the top, and the tab title says where you are (pages can set a more specific one). */

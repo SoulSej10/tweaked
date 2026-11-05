@@ -12,6 +12,7 @@ import { VOICE_LANGS, type TextSize } from '../lib/settings'
 import { supabase } from '../lib/supabase'
 import { applyTheme, loadTheme, saveTheme, type Theme } from '../lib/theme'
 import { usePrefs } from '../prefs'
+import { ArrowsClockwise, CheckCircle, DeviceMobile, DownloadSimple, SignOut, Trash } from '@phosphor-icons/react'
 
 function download(name: string, text: string, type: string) {
   const url = URL.createObjectURL(new Blob([text], { type }))
@@ -226,7 +227,7 @@ export default function Settings() {
           <p><b>Dishes</b><br /><span className="muted">{labels(prefs.kinds, KINDS, 'Anything')}</span></p>
           <p><b>Effort</b><br /><span className="muted">{labels([prefs.effort], EFFORTS, 'Easy')}</span></p>
           <p><b>Skipping</b><br /><span className="muted">{labels(prefs.avoid, AVOID, 'Nothing')}</span></p>
-          <Link className="btn" to="/onboarding">Retake the taste quiz</Link>
+          <Link className="btn" to="/onboarding"><ArrowsClockwise size={18} aria-hidden /> Retake the taste quiz</Link>
         </div>
 
         <h2>Cooking</h2>
@@ -256,11 +257,11 @@ export default function Settings() {
         <h2>Get the app</h2>
         <div className="panel">
           {install.installed ? (
-            <p>✅ Tweaked is installed on this device.</p>
+            <p className="with-icon"><CheckCircle size={20} weight="fill" aria-hidden /> Tweaked is installed on this device.</p>
           ) : install.canPrompt ? (
             <>
               <p className="muted">Install Tweaked for a full-screen app, offline use, and Share-to-Tweaked from Facebook (Android).</p>
-              <button className="btn primary" onClick={install.install}>Install Tweaked</button>
+              <button className="btn primary" onClick={install.install}><DeviceMobile size={18} aria-hidden /> Install Tweaked</button>
             </>
           ) : install.isIos ? (
             <p className="muted">On iPhone: tap the <b>Share</b> button in Safari, then <b>Add to Home Screen</b>.</p>
@@ -289,14 +290,14 @@ export default function Settings() {
               <button className="btn" onClick={() => setOpen('email')}>Change email</button>
             </div>
           )}
-          <button className="btn" onClick={signOutEverywhere}>Sign out of all devices</button>
+          <button className="btn" onClick={signOutEverywhere}><SignOut size={18} aria-hidden /> Sign out of all devices</button>
         </div>
 
         <h2>Your data</h2>
         <p className="muted small">Your cookbook is yours. Download all of it any time.</p>
         <div className="row wrap">
-          <button className="btn" onClick={exportJson} disabled={busy}>Download JSON</button>
-          <button className="btn" onClick={exportMd} disabled={busy}>Download Markdown</button>
+          <button className="btn" onClick={exportJson} disabled={busy}><DownloadSimple size={18} aria-hidden /> Download JSON</button>
+          <button className="btn" onClick={exportMd} disabled={busy}><DownloadSimple size={18} aria-hidden /> Download Markdown</button>
         </div>
         <button className="btn" onClick={clearOffline}>Clear offline copies</button>
         {note && <p className="muted small" role="status">{note}</p>}
@@ -316,12 +317,12 @@ export default function Settings() {
         <p className="small"><Link to="/terms">Terms of Use</Link> · <Link to="/privacy">Privacy Policy</Link> · <a href="https://github.com/SoulSej10/tweaked/issues" target="_blank" rel="noreferrer">Report a problem</a></p>
 
         <h2>Account</h2>
-        <button className="btn" onClick={() => supabase.auth.signOut()}>Sign out</button>
+        <button className="btn" onClick={() => supabase.auth.signOut()}><SignOut size={18} aria-hidden /> Sign out</button>
 
         <h2 className="danger-title">Danger zone</h2>
         <div className="panel danger-zone">
           <p className="muted small">Permanently delete your account and everything in it.</p>
-          <button className="btn danger" onClick={deleteAccount} disabled={busy}>Delete my account</button>
+          <button className="btn danger" onClick={deleteAccount} disabled={busy}><Trash size={18} aria-hidden /> Delete my account</button>
         </div>
       </section>
     </Shell>

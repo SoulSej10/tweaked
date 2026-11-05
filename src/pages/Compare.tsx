@@ -1,7 +1,8 @@
-import { Link, useParams, useSearchParams } from 'react-router-dom'
+import { useParams, useSearchParams } from 'react-router-dom'
 import { getRecipe } from '../lib/api'
 import { useAsync } from '../lib/hooks'
 import { formatIngredient } from '../lib/parse'
+import { BackLink } from '../components/Brand'
 
 function Column({ lines, other }: { lines: string[]; other: string[] }) {
   return (
@@ -50,7 +51,7 @@ export default function Compare() {
   return (
     <main className="page">
       <header className="topbar">
-        <Link to={`/recipe/${recipe.id}`} className="btn ghost">← Back</Link>
+        <BackLink to={`/recipe/${recipe.id}`} />
         <h1>Compare</h1>
       </header>
       <section className="pad">
