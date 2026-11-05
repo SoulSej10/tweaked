@@ -1,6 +1,6 @@
 import { useParams, useSearchParams } from 'react-router-dom'
 import { getRecipe } from '../lib/api'
-import { useAsync } from '../lib/hooks'
+import { useAsync, useTitle } from '../lib/hooks'
 import { formatIngredient } from '../lib/parse'
 import { BackLink } from '../components/Brand'
 
@@ -18,6 +18,7 @@ export default function Compare() {
   const { id = '' } = useParams()
   const [params, setParams] = useSearchParams()
   const { data, error, loading } = useAsync(() => getRecipe(id), [id])
+  useTitle(data ? `Compare ${data.recipe.title}` : 'Compare')
 
   if (loading) return <main className="page"><p className="muted pad">Loading…</p></main>
   if (error || !data) return <main className="page"><p className="error pad">{error ?? 'Not found'}</p></main>

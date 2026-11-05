@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { addVersion, createRecipe, getRecipe, updateRecipeMeta, type RecipeFull } from '../lib/api'
-import { useAsync } from '../lib/hooks'
+import { useAsync, useTitle } from '../lib/hooks'
 import { detectSource, formatIngredient, formatSteps, importCaption, parseIngredients, parseSteps } from '../lib/parse'
 import { dishToRecipe } from '../lib/discover'
 import { CUISINES, KINDS } from '../lib/prefs'
@@ -31,6 +31,7 @@ function Form({ full }: { full: RecipeFull | null }) {
   const nav = useNavigate()
   const [params] = useSearchParams()
   const editing = Boolean(full)
+  useTitle(editing ? 'Edit recipe' : 'New recipe')
   const current = full?.versions.find((v) => v.id === full.recipe.current_version_id) ?? full?.versions[0]
   const r = full?.recipe
 

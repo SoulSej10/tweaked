@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { getRecipe, logCook } from '../lib/api'
-import { useAsync, useSettings, useWakeLock } from '../lib/hooks'
+import { useAsync, useSettings, useTitle, useWakeLock } from '../lib/hooks'
 import { formatDuration, formatIngredient } from '../lib/parse'
 import { uploadDishPhoto } from '../lib/photo'
 import { useDictation } from '../lib/speech'
@@ -65,6 +65,7 @@ export default function Cook() {
   const { id = '' } = useParams()
   const nav = useNavigate()
   const { data, error, loading } = useAsync(() => getRecipe(id), [id])
+  useTitle(data ? `Cooking ${data.recipe.title}` : 'Cooking')
   const [i, setI] = useState(0)
   const [showIng, setShowIng] = useState(false)
   const [ticked, setTicked] = useState<Set<number>>(new Set())
