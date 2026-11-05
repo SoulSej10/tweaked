@@ -22,6 +22,7 @@ export type Recipe = {
   servings: number | null
   tags: string[]
   bring_from_home: boolean
+  favorite: boolean
   current_version_id: string | null
   cooked_count: number
   last_cooked_at: string | null

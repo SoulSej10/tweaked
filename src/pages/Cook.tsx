@@ -6,26 +6,56 @@ import { formatDuration, formatIngredient } from '../lib/parse'
 import { uploadDishPhoto } from '../lib/photo'
 import { useDictation } from '../lib/speech'
 
+/** Counts down against the clock, so it stays right if the phone sleeps or the tab is in the background. */
 function Timer({ seconds, vibrate }: { seconds: number; vibrate: boolean }) {
-  const [left, setLeft] = useState(seconds)
-  const [running, setRunning] = useState(false)
+  const [left, setLeft] = useState(seconds) // seconds left while paused
+  const [endAt, setEndAt] = useState<number | null>(null) // when it will finish, while running
+  const [now, setNow] = useState(() => Date.now())
+  const running = endAt !== null
+  const remaining = running ? Math.max(0, Math.ceil((endAt - now) / 1000)) : left
+  const finished = !running && left === 0
 
   useEffect(() => {
-    if (!running) return
-    const t = setInterval(() => setLeft((l) => Math.max(0, l - 1)), 1000)
-    return () => clearInterval(t)
-  }, [running])
+    if (endAt === null) return
+    const tick = () => {
+      const t = Date.now()
+      setNow(t)
+      if (t >= endAt) {
+        setLeft(0)
+        setEndAt(null)
+        if (vibrate && 'vibrate' in navigator) navigator.vibrate?.([300, 150, 300])
+        // If the screen is off or the tab is hidden, a notification is the only way to get your attention.
+        if (document.hidden && 'Notification' in window && Notification.permission === 'granted') {
+          void navigator.serviceWorker?.ready
+            .then((r) => r.showNotification('Timer done', { body: 'Time to check your dish.', tag: 'tweaked-timer' }))
+            .catch(() => new Notification('Timer done'))
+        }
+      }
+    }
+    const t = setInterval(tick, 250)
+    document.addEventListener('visibilitychange', tick)
+    return () => {
+      clearInterval(t)
+      document.removeEventListener('visibilitychange', tick)
+    }
+  }, [endAt, vibrate])
 
-  const finished = left === 0
-  useEffect(() => {
-    if (finished && running && vibrate && 'vibrate' in navigator) navigator.vibrate?.([300, 150, 300])
-  }, [finished, running, vibrate])
+  function toggle() {
+    if (running) {
+      setLeft(remaining)
+      setEndAt(null)
+      return
+    }
+    setNow(Date.now())
+    setEndAt(Date.now() + left * 1000)
+    if ('Notification' in window && Notification.permission === 'default') void Notification.requestPermission()
+  }
 
   return (
     <div className={`timer ${finished ? 'done' : ''}`}>
-      <span>{finished ? 'Time!' : formatDuration(left)}</span>
-      <button className="btn" onClick={() => setRunning((r) => !r)} disabled={finished}>{running ? 'Pause' : 'Start timer'}</button>
-      <button className="btn ghost" onClick={() => { setLeft(seconds); setRunning(false) }}>Reset</button>
+      <span>{finished ? 'Time!' : formatDuration(remaining)}</span>
+      <button className="btn" onClick={toggle} disabled={finished}>{running ? 'Pause' : 'Start timer'}</button>
+      <button className="btn ghost" onClick={() => { setLeft(seconds); setEndAt(null) }}>Reset</button>
     </div>
   )
 }

@@ -1,4 +1,4 @@
-import type { VercelRequest, VercelResponse } from '@vercel/node'
+import type { ApiRequest, ApiResponse } from './_lib/http.js'
 import { aiEnabled, aiExtract } from './_lib/anthropic.js'
 import { fail, requireUser, send, takeCredit } from './_lib/auth.js'
 import { extractFromPage, isSocial, pageToText } from './_lib/recipe.js'
@@ -9,7 +9,7 @@ import { checkUrl, fetchPage } from './_lib/safeFetch.js'
  * Reads a recipe page. Most recipe sites embed the recipe as structured data, which is free and exact.
  * Only when a page has none do we ask the AI to read it (this costs one daily credit).
  */
-export default async function handler(req: VercelRequest, res: VercelResponse) {
+export default async function handler(req: ApiRequest, res: ApiResponse) {
   if (req.method !== 'POST') return send(res, 405, { error: 'method', message: 'Use POST.' })
   try {
     const user = await requireUser(req)

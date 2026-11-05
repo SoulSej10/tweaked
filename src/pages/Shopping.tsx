@@ -1,10 +1,12 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { Shell } from '../components/Shell'
+import { useFeedback } from '../feedback'
 import { addItems, clearAll, clearDone, removeItem, toggleItem, useShopping } from '../lib/shopping'
 
 export default function Shopping() {
   const items = useShopping()
+  const { confirm, toast } = useFeedback()
   const [text, setText] = useState('')
   const [copied, setCopied] = useState(false)
   const todo = items.filter((i) => !i.done)
@@ -24,6 +26,7 @@ export default function Shopping() {
       else {
         await navigator.clipboard.writeText(body)
         setCopied(true)
+        toast('List copied')
         setTimeout(() => setCopied(false), 1800)
       }
     } catch {
@@ -77,7 +80,7 @@ export default function Shopping() {
         </>
       )}
 
-      {items.length > 0 && <div className="pad"><button className="link danger" onClick={() => window.confirm('Clear the whole list?') && clearAll()}>Clear everything</button></div>}
+      {items.length > 0 && <div className="pad"><button className="link danger" onClick={async () => { if (await confirm({ title: 'Clear the whole list?', body: 'Everything on your shopping list will be removed.', confirmLabel: 'Clear list', danger: true })) { clearAll(); toast('List cleared') } }}>Clear everything</button></div>}
     </Shell>
   )
 }

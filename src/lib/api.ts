@@ -107,6 +107,10 @@ export async function listRecentCooks(days = 60): Promise<CookStat[]> {
   ) as CookStat[]
 }
 
+export async function setFavorite(id: string, favorite: boolean): Promise<void> {
+  check(await supabase.from('recipes').update({ favorite }).eq('id', id).select('id').single())
+}
+
 export async function deleteRecipe(id: string): Promise<void> {
   check(await supabase.from('recipes').delete().eq('id', id).select('id'))
 }

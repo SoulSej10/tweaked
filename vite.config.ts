@@ -7,7 +7,7 @@ export default defineConfig({
   plugins: [
     react(),
     VitePWA({
-      registerType: 'autoUpdate',
+      registerType: 'prompt',
       includeAssets: ['favicon.svg', 'icon-192.png'],
       manifest: {
         name: 'Tweaked',
@@ -16,7 +16,17 @@ export default defineConfig({
         theme_color: '#c4471d',
         background_color: '#fff7ef',
         display: 'standalone',
+        orientation: 'portrait',
+        id: '/',
+        scope: '/',
+        lang: 'en',
+        categories: ['food', 'lifestyle'],
         start_url: '/',
+        shortcuts: [
+          { name: 'Add a recipe', short_name: 'Add', url: '/new', icons: [{ src: '/icon-192.png', sizes: '192x192', type: 'image/png' }] },
+          { name: 'Shopping list', short_name: 'Shopping', url: '/shopping', icons: [{ src: '/icon-192.png', sizes: '192x192', type: 'image/png' }] },
+          { name: 'Discover dishes', short_name: 'Discover', url: '/discover', icons: [{ src: '/icon-192.png', sizes: '192x192', type: 'image/png' }] },
+        ],
         // Lets you Share a Facebook/Instagram/TikTok post straight into Tweaked (Android, once installed).
         share_target: { action: '/share', method: 'GET', params: { title: 'title', text: 'text', url: 'url' } },
         icons: [

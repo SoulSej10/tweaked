@@ -34,7 +34,7 @@ function ago(iso: string | null): string {
 
 export default function Home() {
   const { session } = useAuth()
-  const { prefs } = usePrefs()
+  const { prefs, name } = usePrefs()
   const recipes = useAsync(listRecipes, [])
   const cooks = useAsync(() => listRecentCooks(60), [])
   const shopping = useShopping().filter((i) => !i.done).length
@@ -65,7 +65,7 @@ export default function Home() {
       <header className="topbar">
         <div>
           <p className="eyebrow">{greeting(new Date().getHours())}</p>
-          <h1 className="hello">Hi {firstName(session?.user.email)} <span className="wave" aria-hidden>👋</span></h1>
+          <h1 className="hello">Hi {name ? name.split(' ')[0] : firstName(session?.user.email)} <span className="wave" aria-hidden>👋</span></h1>
         </div>
         <button className="icon-btn" onClick={() => setBump((b) => b + 1)} aria-label="Shuffle suggestions" title="Shuffle suggestions">🎲</button>
       </header>

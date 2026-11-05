@@ -2,8 +2,10 @@ import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useAuth } from '../auth'
 import { Shell } from '../components/Shell'
+import { useFeedback } from '../feedback'
 import { exportEverything, listRecipes } from '../lib/api'
-import { useAsync, useSettings } from '../lib/hooks'
+import { friendlyAuthError, isEmail, passwordProblem } from '../lib/authErrors'
+import { useAsync, useInstall, useSettings, useTitle } from '../lib/hooks'
 import { formatIngredient, type UnitSystem } from '../lib/parse'
 import { AVOID, CUISINES, EFFORTS, KINDS } from '../lib/prefs'
 import { VOICE_LANGS, type TextSize } from '../lib/settings'
@@ -33,9 +35,14 @@ function Seg<T extends string>({ value, options, onPick, name }: { value: T; opt
   )
 }
 
+const PROVIDER_LABEL: Record<string, string> = { email: 'Email and password', google: 'Google' }
+
 export default function Settings() {
+  useTitle('Me')
   const { session } = useAuth()
-  const { prefs } = usePrefs()
+  const { prefs, name, saveName } = usePrefs()
+  const { toast, confirm } = useFeedback()
+  const install = useInstall()
   const recipes = useAsync(listRecipes, [])
   const [settings, update] = useSettings()
   const [theme, setTheme] = useState<Theme>(loadTheme)
@@ -43,15 +50,99 @@ export default function Settings() {
   const [err, setErr] = useState<string | null>(null)
   const [note, setNote] = useState<string | null>(null)
 
-  const email = session?.user.email ?? ''
+  const [nameDraft, setNameDraft] = useState<string | null>(null)
+  const [pw, setPw] = useState({ next: '', again: '' })
+  const [newEmail, setNewEmail] = useState('')
+  const [open, setOpen] = useState<'password' | 'email' | null>(null)
+
+  const user = session?.user
+  const email = user?.email ?? ''
+  const providers = (user?.identities ?? []).map((i) => PROVIDER_LABEL[i.provider] ?? i.provider)
   const mine = recipes.data ?? []
   const cooks = mine.reduce((n, r) => n + r.cooked_count, 0)
-  const since = session?.user.created_at ? new Date(session.user.created_at).toLocaleDateString(undefined, { month: 'long', year: 'numeric' }) : null
+  const since = user?.created_at ? new Date(user.created_at).toLocaleDateString(undefined, { month: 'long', year: 'numeric' }) : null
+  const shownName = name ?? email.split('@')[0]
 
   function pick(t: Theme) {
     setTheme(t)
     applyTheme(t)
     saveTheme(t)
+  }
+
+  async function submitName(e: React.FormEvent) {
+    e.preventDefault()
+    try {
+      await saveName(nameDraft ?? '')
+      setNameDraft(null)
+      toast('Name saved')
+    } catch (er) {
+      toast((er as Error).message, 'error')
+    }
+  }
+
+  async function changePassword(e: React.FormEvent) {
+    e.preventDefault()
+    const problem = passwordProblem(pw.next)
+    if (problem) return toast(problem, 'error')
+    if (pw.next !== pw.again) return toast("The two passwords don't match.", 'error')
+    setBusy(true)
+    const { error } = await supabase.auth.updateUser({ password: pw.next })
+    setBusy(false)
+    if (error) return toast(friendlyAuthError(error.message), 'error')
+    setPw({ next: '', again: '' })
+    setOpen(null)
+    toast('Password changed')
+  }
+
+  async function changeEmail(e: React.FormEvent) {
+    e.preventDefault()
+    if (!isEmail(newEmail)) return toast('That does not look like an email address.', 'error')
+    setBusy(true)
+    const { error } = await supabase.auth.updateUser({ email: newEmail.trim() }, { emailRedirectTo: `${window.location.origin}/` })
+    setBusy(false)
+    if (error) return toast(friendlyAuthError(error.message), 'error')
+    setNewEmail('')
+    setOpen(null)
+    toast('Check your inbox to confirm the new address.')
+  }
+
+  async function signOutEverywhere() {
+    const ok = await confirm({ title: 'Sign out of all devices?', body: 'You will need to sign in again on your phone, laptop and anywhere else.', confirmLabel: 'Sign out everywhere' })
+    if (ok) await supabase.auth.signOut({ scope: 'global' })
+  }
+
+  async function deleteAccount() {
+    if (!user) return
+    const ok = await confirm({
+      title: 'Delete your account?',
+      body: 'This permanently deletes your account, recipes, tweak history, photos and quiz answers. It cannot be undone. Download your cookbook first if you want a copy.',
+      confirmLabel: 'Delete everything',
+      danger: true,
+      requireText: 'DELETE',
+    })
+    if (!ok) return
+    setBusy(true)
+    try {
+      // Photos live in files, not in the database, so remove them first.
+      const bucket = supabase.storage.from('dish-photos')
+      const { data: top } = await bucket.list(user.id, { limit: 1000 })
+      const paths: string[] = []
+      for (const entry of top ?? []) {
+        if (entry.id === null) {
+          const { data: files } = await bucket.list(`${user.id}/${entry.name}`, { limit: 1000 })
+          for (const f of files ?? []) paths.push(`${user.id}/${entry.name}/${f.name}`)
+        } else paths.push(`${user.id}/${entry.name}`)
+      }
+      if (paths.length) await bucket.remove(paths)
+      const { error } = await supabase.rpc('delete_my_account')
+      if (error) throw new Error(error.message)
+      Object.keys(localStorage).filter((k) => k.startsWith('tweaked.')).forEach((k) => localStorage.removeItem(k))
+      await supabase.auth.signOut({ scope: 'local' }).catch(() => undefined)
+      toast('Your account was deleted.')
+    } catch (e) {
+      setBusy(false)
+      toast((e as Error).message || 'Could not delete the account. Try again.', 'error')
+    }
   }
 
   async function exportJson() {
@@ -108,10 +199,10 @@ export default function Settings() {
       <header className="topbar"><h1>Me</h1></header>
       <section className="pad stack">
         <div className="profile">
-          <span className="avatar" aria-hidden>{(email[0] ?? '?').toUpperCase()}</span>
+          <span className="avatar" aria-hidden>{(shownName[0] ?? '?').toUpperCase()}</span>
           <div>
-            <p><b>{email || 'Signed in'}</b></p>
-            <p className="muted small">{since ? `Cooking with Tweaked since ${since}` : 'Welcome back'}</p>
+            <p><b>{shownName}</b></p>
+            <p className="muted small">{email}{since ? ` · since ${since}` : ''}</p>
           </div>
         </div>
         <div className="mini-stats">
@@ -119,6 +210,15 @@ export default function Settings() {
           <div className="stat"><b>{cooks}</b><span>times cooked</span></div>
           <div className="stat"><b>{mine.filter((r) => r.lastTweak).length}</b><span>with tweaks</span></div>
         </div>
+
+        <h2>Profile</h2>
+        <form className="panel" onSubmit={submitName}>
+          <label>
+            <span>Your name</span>
+            <input value={nameDraft ?? name ?? ''} onChange={(e) => setNameDraft(e.target.value)} placeholder="What should we call you?" maxLength={60} autoComplete="name" />
+          </label>
+          <button className="btn" disabled={nameDraft === null || nameDraft === (name ?? '')}>Save name</button>
+        </form>
 
         <h2>My taste</h2>
         <div className="panel">
@@ -153,6 +253,45 @@ export default function Settings() {
           <Seg<TextSize> value={settings.textSize} name="Text size" onPick={(textSize) => update({ textSize })} options={[{ id: 's', label: 'Small' }, { id: 'm', label: 'Normal' }, { id: 'l', label: 'Large' }]} />
         </div>
 
+        <h2>Get the app</h2>
+        <div className="panel">
+          {install.installed ? (
+            <p>✅ Tweaked is installed on this device.</p>
+          ) : install.canPrompt ? (
+            <>
+              <p className="muted">Install Tweaked for a full-screen app, offline use, and Share-to-Tweaked from Facebook (Android).</p>
+              <button className="btn primary" onClick={install.install}>Install Tweaked</button>
+            </>
+          ) : install.isIos ? (
+            <p className="muted">On iPhone: tap the <b>Share</b> button in Safari, then <b>Add to Home Screen</b>.</p>
+          ) : (
+            <p className="muted">Open your browser's menu and choose <b>Install app</b> or <b>Add to Home screen</b>.</p>
+          )}
+        </div>
+
+        <h2>Sign-in &amp; security</h2>
+        <div className="panel">
+          <p><b>Signed in with</b><br /><span className="muted">{providers.join(', ') || 'Email and password'}</span></p>
+          {open === 'password' ? (
+            <form className="stack" onSubmit={changePassword}>
+              <input type="password" placeholder="New password (8+ characters, letters and numbers)" aria-label="New password" autoComplete="new-password" value={pw.next} onChange={(e) => setPw({ ...pw, next: e.target.value })} />
+              <input type="password" placeholder="Type it again" aria-label="Confirm new password" autoComplete="new-password" value={pw.again} onChange={(e) => setPw({ ...pw, again: e.target.value })} />
+              <div className="row"><button className="btn primary" disabled={busy}>Save password</button><button type="button" className="btn ghost" onClick={() => setOpen(null)}>Cancel</button></div>
+            </form>
+          ) : open === 'email' ? (
+            <form className="stack" onSubmit={changeEmail}>
+              <input type="email" placeholder="New email address" aria-label="New email" autoComplete="email" value={newEmail} onChange={(e) => setNewEmail(e.target.value)} />
+              <div className="row"><button className="btn primary" disabled={busy}>Send confirmation</button><button type="button" className="btn ghost" onClick={() => setOpen(null)}>Cancel</button></div>
+            </form>
+          ) : (
+            <div className="row wrap">
+              <button className="btn" onClick={() => setOpen('password')}>{providers.includes('Email and password') ? 'Change password' : 'Set a password'}</button>
+              <button className="btn" onClick={() => setOpen('email')}>Change email</button>
+            </div>
+          )}
+          <button className="btn" onClick={signOutEverywhere}>Sign out of all devices</button>
+        </div>
+
         <h2>Your data</h2>
         <p className="muted small">Your cookbook is yours. Download all of it any time.</p>
         <div className="row wrap">
@@ -172,11 +311,18 @@ export default function Settings() {
 
         <h2>About</h2>
         <p className="muted small">
-          Tweaked 1.0. Suggestions come from <a href="https://www.themealdb.com" target="_blank" rel="noreferrer">TheMealDB</a>, <a href="https://dummyjson.com/docs/recipes" target="_blank" rel="noreferrer">DummyJSON</a> and <a href="https://www.thecocktaildb.com" target="_blank" rel="noreferrer">TheCocktailDB</a>. Flag icons by <a href="https://github.com/twitter/twemoji" target="_blank" rel="noreferrer">Twemoji</a>.
+          Tweaked 1.0. Suggestions come from <a href="https://www.themealdb.com" target="_blank" rel="noreferrer">TheMealDB</a>, <a href="https://dummyjson.com/docs/recipes" target="_blank" rel="noreferrer">DummyJSON</a>, <a href="https://www.thecocktaildb.com" target="_blank" rel="noreferrer">TheCocktailDB</a> and <a href="https://en.wikibooks.org/wiki/Cookbook:Table_of_Contents" target="_blank" rel="noreferrer">Wikibooks Cookbook</a>. Flag icons by <a href="https://github.com/twitter/twemoji" target="_blank" rel="noreferrer">Twemoji</a>.
         </p>
+        <p className="small"><Link to="/terms">Terms of Use</Link> · <Link to="/privacy">Privacy Policy</Link> · <a href="https://github.com/SoulSej10/tweaked/issues" target="_blank" rel="noreferrer">Report a problem</a></p>
 
         <h2>Account</h2>
         <button className="btn" onClick={() => supabase.auth.signOut()}>Sign out</button>
+
+        <h2 className="danger-title">Danger zone</h2>
+        <div className="panel danger-zone">
+          <p className="muted small">Permanently delete your account and everything in it.</p>
+          <button className="btn danger" onClick={deleteAccount} disabled={busy}>Delete my account</button>
+        </div>
       </section>
     </Shell>
   )

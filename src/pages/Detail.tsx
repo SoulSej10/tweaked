@@ -1,9 +1,10 @@
 import { useState } from 'react'
 import { signedUrls } from '../lib/photo'
 import { Link, useNavigate, useParams } from 'react-router-dom'
-import { deleteRecipe, getRecipe, rollbackTo } from '../lib/api'
+import { useFeedback } from '../feedback'
+import { deleteRecipe, getRecipe, rollbackTo, setFavorite } from '../lib/api'
 import { dishEmoji, tileIndex } from '../lib/emoji'
-import { useAsync, useSettings } from '../lib/hooks'
+import { useAsync, useSettings, useTitle } from '../lib/hooks'
 import { addItems } from '../lib/shopping'
 import { convertIngredient, formatIngredient, scaleAmount, type UnitSystem } from '../lib/parse'
 
@@ -21,6 +22,9 @@ export default function Detail() {
   const [defaults] = useSettings()
   const [units, setUnits] = useState<UnitSystem>(defaults.units)
   const [added, setAdded] = useState<number | null>(null)
+  const [fav, setFav] = useState<boolean | null>(null)
+  const { toast, confirm } = useFeedback()
+  useTitle(data?.recipe.title)
 
   if (loading) return <main className="page"><p className="muted pad">Loading…</p></main>
   if (error || !data) return <main className="page"><p className="error pad">{error ?? 'Not found'}</p><Link to="/recipes" className="btn">Back</Link></main>
@@ -33,6 +37,9 @@ export default function Detail() {
   const target = servings ?? base
   const factor = base && target ? target / base : 1
   const lastTweak = logs.find((l) => l.tweak_note)
+  const favorite = fav ?? recipe.favorite
+  // The banner shows your most recent photo of this dish, if you took one.
+  const cover = logs.map((l) => (l.photo_path ? urls[l.photo_path] : null)).find(Boolean) ?? null
 
   async function rollback() {
     if (!shown) return
@@ -49,20 +56,69 @@ export default function Detail() {
   function addToList() {
     if (!shown) return
     const lines = shown.ingredients.map((i) => formatIngredient(convertIngredient({ ...i, amount: scaleAmount(i.amount, factor, i.unit) }, units)))
-    setAdded(addItems(lines, recipe.title))
+    const n = addItems(lines, recipe.title)
+    setAdded(n)
+    toast(n > 0 ? `Added ${n} to your shopping list` : 'Already on your shopping list')
+  }
+
+  async function toggleFavorite() {
+    const next = !(fav ?? recipe.favorite)
+    setFav(next)
+    try {
+      await setFavorite(recipe.id, next)
+      toast(next ? 'Added to favorites' : 'Removed from favorites')
+    } catch (e) {
+      setFav(!next)
+      toast((e as Error).message, 'error')
+    }
+  }
+
+  async function share() {
+    if (!shown) return
+    const lines = [
+      recipe.title,
+      '',
+      'Ingredients',
+      ...shown.ingredients.map((i) => `- ${formatIngredient(i)}`),
+      '',
+      'Steps',
+      ...shown.steps.map((s, n) => `${n + 1}. ${s.text}`),
+      ...(recipe.source_url ? ['', `Source: ${recipe.source_url}`] : []),
+    ]
+    const text = lines.join('\n')
+    try {
+      if (navigator.share) await navigator.share({ title: recipe.title, text })
+      else {
+        await navigator.clipboard.writeText(text)
+        toast('Recipe copied to the clipboard')
+      }
+    } catch {
+      /* share sheet dismissed */
+    }
   }
 
   async function remove() {
-    if (!window.confirm(`Delete “${recipe.title}” and all its versions? This cannot be undone.`)) return
-    await deleteRecipe(recipe.id)
-    nav('/recipes', { replace: true })
+    const ok = await confirm({ title: `Delete “${recipe.title}”?`, body: 'This removes the recipe, every version and its cook history. It cannot be undone.', confirmLabel: 'Delete', danger: true })
+    if (!ok) return
+    try {
+      await deleteRecipe(recipe.id)
+      toast('Recipe deleted')
+      nav('/recipes', { replace: true })
+    } catch (e) {
+      toast((e as Error).message, 'error')
+    }
   }
 
   return (
     <main className="page with-bar">
       <div className={`banner short dthumb t${tileIndex(recipe.title)} no-print`}>
         <span className="demoji" aria-hidden>{dishEmoji(recipe.title, recipe.tags)}</span>
+        {cover && <img src={cover} alt={`${recipe.title}, as you cooked it`} onError={(e) => (e.currentTarget.style.display = 'none')} />}
         <Link to="/recipes" className="float-back" aria-label="Back to recipes">←</Link>
+        <div className="float-actions">
+          <button className={`float-btn ${favorite ? 'on' : ''}`} onClick={toggleFavorite} aria-pressed={favorite} aria-label={favorite ? 'Remove from favorites' : 'Add to favorites'}>{favorite ? '♥' : '♡'}</button>
+          <button className="float-btn" onClick={share} aria-label="Share this recipe">⤴</button>
+        </div>
       </div>
 
       <section className="pad">

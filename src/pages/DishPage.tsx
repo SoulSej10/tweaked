@@ -3,7 +3,8 @@ import { Link, useNavigate, useParams } from 'react-router-dom'
 import { createRecipe } from '../lib/api'
 import { dishToRecipe, dishUrl, lookup, thumbUrl, urlFromDishId } from '../lib/discover'
 import { dishEmoji, tileIndex } from '../lib/emoji'
-import { useAsync } from '../lib/hooks'
+import { useFeedback } from '../feedback'
+import { useAsync, useTitle } from '../lib/hooks'
 import { addItems } from '../lib/shopping'
 
 export default function DishPage() {
@@ -13,6 +14,8 @@ export default function DishPage() {
   const [busy, setBusy] = useState<'save' | 'cook' | null>(null)
   const [err, setErr] = useState<string | null>(null)
   const [added, setAdded] = useState<number | null>(null)
+  const { toast } = useFeedback()
+  useTitle(dish?.name)
 
   const fromWeb = id.startsWith('url-')
   const originalUrl = urlFromDishId(id)
@@ -79,7 +82,7 @@ export default function DishPage() {
         </ul>
 
         <div className="row" style={{ marginTop: 10 }}>
-          <button className="btn" onClick={() => setAdded(addItems(dish.ingredients.map((i) => `${i.measure} ${i.name}`.trim()), dish.name))}>🛒 Add to shopping list</button>
+          <button className="btn" onClick={() => { const n = addItems(dish.ingredients.map((i) => `${i.measure} ${i.name}`.trim()), dish.name); setAdded(n); toast(n > 0 ? `Added ${n} to your shopping list` : 'Already on your shopping list') }}>🛒 Add to shopping list</button>
           {added !== null && <Link to="/shopping" className="small">{added > 0 ? `Added ${added} · view list` : 'Already on your list · view'}</Link>}
         </div>
 

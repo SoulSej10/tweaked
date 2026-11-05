@@ -39,7 +39,8 @@ const TABS = [
 export function Shell({ children }: { children: ReactNode }) {
   return (
     <>
-      <main className="page">{children}</main>
+      <a className="skip" href="#main">Skip to content</a>
+      <main className="page" id="main" tabIndex={-1}>{children}</main>
       <nav className="tabs" aria-label="Main">
         {TABS.map((t) => (
           <NavLink

@@ -66,3 +66,63 @@ export function useSettings() {
   }
   return [settings, update] as const
 }
+
+/** Set the browser tab / history title for a screen. */
+export function useTitle(title: string | null | undefined) {
+  useEffect(() => {
+    document.title = title ? `${title} · Tweaked` : 'Tweaked'
+  }, [title])
+}
+
+/** True while the device has a connection. */
+export function useOnline(): boolean {
+  const [online, setOnline] = useState(() => (typeof navigator === 'undefined' ? true : navigator.onLine))
+  useEffect(() => {
+    const on = () => setOnline(true)
+    const off = () => setOnline(false)
+    window.addEventListener('online', on)
+    window.addEventListener('offline', off)
+    return () => {
+      window.removeEventListener('online', on)
+      window.removeEventListener('offline', off)
+    }
+  }, [])
+  return online
+}
+
+type InstallEvent = Event & { prompt: () => Promise<void>; userChoice: Promise<{ outcome: 'accepted' | 'dismissed' }> }
+
+/** "Install the app" support: Chrome/Android give us a prompt; iPhone needs the Share menu. */
+export function useInstall() {
+  const [event, setEvent] = useState<InstallEvent | null>(null)
+  const [installed, setInstalled] = useState(() => typeof window !== 'undefined' && window.matchMedia('(display-mode: standalone)').matches)
+  useEffect(() => {
+    const onPrompt = (e: Event) => {
+      e.preventDefault()
+      setEvent(e as InstallEvent)
+    }
+    const onInstalled = () => {
+      setInstalled(true)
+      setEvent(null)
+    }
+    window.addEventListener('beforeinstallprompt', onPrompt)
+    window.addEventListener('appinstalled', onInstalled)
+    return () => {
+      window.removeEventListener('beforeinstallprompt', onPrompt)
+      window.removeEventListener('appinstalled', onInstalled)
+    }
+  }, [])
+  const ua = typeof navigator === 'undefined' ? '' : navigator.userAgent
+  const isIos = /iphone|ipad|ipod/i.test(ua)
+  return {
+    installed,
+    canPrompt: Boolean(event),
+    isIos,
+    install: async () => {
+      if (!event) return
+      await event.prompt()
+      await event.userChoice
+      setEvent(null)
+    },
+  }
+}

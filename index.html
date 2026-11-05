@@ -5,13 +5,24 @@
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <link rel="apple-touch-icon" href="/icon-192.png" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-    <meta name="theme-color" content="#c4471d" />
+    <meta name="theme-color" content="#c4471d" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#1f1614" media="(prefers-color-scheme: dark)" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-title" content="Tweaked" />
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="Tweaked" />
+    <meta property="og:title" content="Tweaked: your version of every dish" />
+    <meta property="og:description" content="Save recipes, cook step by step, and remember every tweak you make." />
+    <meta property="og:image" content="/icon-512.png" />
+    <meta name="twitter:card" content="summary" />
     <!-- Start fetching the dish catalog right away; it is ready by the time Home needs it. -->
     <link rel="preload" href="/catalog.json" as="fetch" crossorigin="anonymous" />
     <meta name="description" content="Your version of every dish, with every tweak remembered." />
     <title>Tweaked</title>
   </head>
   <body>
+    <noscript>Tweaked needs JavaScript to run. Please turn it on and reload.</noscript>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>

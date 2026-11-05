@@ -1,4 +1,4 @@
-import type { VercelRequest, VercelResponse } from '@vercel/node'
+import type { ApiRequest, ApiResponse } from './http.js'
 import { FetchError } from './safeFetch.js'
 
 export class HttpError extends Error {
@@ -17,7 +17,7 @@ const supabaseKey = () => process.env.VITE_SUPABASE_PUBLISHABLE_KEY ?? process.e
 export type User = { id: string; token: string }
 
 /** Only signed-in people may use these endpoints: they fetch pages and can spend AI credit. */
-export async function requireUser(req: VercelRequest): Promise<User> {
+export async function requireUser(req: ApiRequest): Promise<User> {
   const header = String(req.headers.authorization ?? '')
   const token = header.startsWith('Bearer ') ? header.slice(7).trim() : ''
   if (!token || !supabaseUrl() || !supabaseKey()) throw new HttpError(401, 'auth', 'Please sign in again.')
@@ -50,12 +50,12 @@ export async function takeCredit(user: User): Promise<number> {
   return left
 }
 
-export function send(res: VercelResponse, status: number, body: unknown) {
+export function send(res: ApiResponse, status: number, body: unknown) {
   res.status(status).setHeader('cache-control', 'no-store').json(body)
 }
 
 /** Turn any failure into a short, safe message (never a stack trace or internal detail). */
-export function fail(res: VercelResponse, e: unknown) {
+export function fail(res: ApiResponse, e: unknown) {
   if (e instanceof HttpError) return send(res, e.status, { error: e.code, message: e.message })
   if (e instanceof FetchError) return send(res, 422, { error: e.code, message: e.message })
   return send(res, 500, { error: 'server', message: 'Something went wrong on our side. Try again.' })

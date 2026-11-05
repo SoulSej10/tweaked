@@ -6,7 +6,8 @@ import { dishEmoji, tileIndex } from '../lib/emoji'
 import { useAsync } from '../lib/hooks'
 import type { RecipeCard } from '../lib/types'
 
-type Filter = 'all' | 'recent' | 'never' | 'home'
+type Filter = 'all' | 'fav' | 'recent' | 'never' | 'home'
+type Sort = 'updated' | 'az' | 'most' | 'cooked'
 const WEEK = 7 * 24 * 3600 * 1000
 
 function ago(iso: string | null): string {
@@ -23,6 +24,7 @@ export default function Library() {
   const [filter, setFilter] = useState<Filter>('all')
   const [tag, setTag] = useState<string | null>(null)
   const [params] = useSearchParams()
+  const [sort, setSort] = useState<Sort>('updated')
   const [pantry, setPantry] = useState(params.get('pantry') === '1')
   const nav = useNavigate()
   const [now] = useState(() => Date.now())
@@ -32,7 +34,8 @@ export default function Library() {
   const shown = useMemo(() => {
     const term = q.trim().toLowerCase()
     const have = term.split(/[,\s]+/).filter(Boolean)
-    return (data ?? []).filter((r: RecipeCard) => {
+    const list = (data ?? []).filter((r: RecipeCard) => {
+      if (filter === 'fav' && !r.favorite) return false
       if (filter === 'recent' && !(r.last_cooked_at && now - new Date(r.last_cooked_at).getTime() < WEEK * 2)) return false
       if (filter === 'never' && r.cooked_count > 0) return false
       if (filter === 'home' && !r.bring_from_home) return false
@@ -47,7 +50,14 @@ export default function Library() {
       }
       return r.title.toLowerCase().includes(term) || r.ingredientNames.some((n) => n.includes(term))
     })
-  }, [data, q, filter, tag, pantry, now])
+    const by: Record<Sort, (a: RecipeCard, b: RecipeCard) => number> = {
+      updated: () => 0, // the list already arrives newest first
+      az: (a, b) => a.title.localeCompare(b.title),
+      most: (a, b) => b.cooked_count - a.cooked_count,
+      cooked: (a, b) => (b.last_cooked_at ?? '').localeCompare(a.last_cooked_at ?? ''),
+    }
+    return [...list].sort(by[sort])
+  }, [data, q, filter, tag, pantry, now, sort])
 
   function surprise() {
     const pool = shown.length ? shown : data ?? []
@@ -75,8 +85,20 @@ export default function Library() {
         <span>Pantry mode <small>(what can I make with what I have?)</small></span>
       </label>
 
+      <div className="sortrow">
+        <label className="inline-label"><span>Sort</span>
+          <select value={sort} onChange={(e) => setSort(e.target.value as Sort)} aria-label="Sort recipes">
+            <option value="updated">Recently changed</option>
+            <option value="cooked">Recently cooked</option>
+            <option value="most">Most cooked</option>
+            <option value="az">A to Z</option>
+          </select>
+        </label>
+        <span className="muted small">{shown.length} {shown.length === 1 ? 'recipe' : 'recipes'}</span>
+      </div>
+
       <div className="chips" role="group" aria-label="Filters">
-        {([['all', 'All'], ['recent', 'Cooked recently'], ['never', 'Never cooked'], ['home', 'Bring from home']] as const).map(([k, label]) => (
+        {([['all', 'All'], ['fav', '♥ Favorites'], ['recent', 'Cooked recently'], ['never', 'Never cooked'], ['home', 'Bring from home']] as const).map(([k, label]) => (
           <button key={k} className={`chip ${filter === k ? 'on' : ''}`} onClick={() => setFilter(k)}>{label}</button>
         ))}
         {tags.map((t) => (
@@ -102,7 +124,7 @@ export default function Library() {
             <Link to={`/recipe/${r.id}`} className="rcard">
               <span className={`rtile t${tileIndex(r.title)}`} aria-hidden>{dishEmoji(r.title, r.tags)}</span>
               <span className="rbody">
-                <b>{r.title}</b>
+                <b>{r.favorite && <span className="heart" aria-label="Favorite">♥ </span>}{r.title}</b>
                 <span className="meta">{ago(r.last_cooked_at)}{r.cooked_count > 0 ? ` · ${r.cooked_count}×` : ''}</span>
                 {r.lastTweak && <span className="tweak">Last time: {r.lastTweak}</span>}
                 {(r.tags.length > 0 || r.bring_from_home) && (
