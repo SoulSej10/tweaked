@@ -1,5 +1,5 @@
 {
-  "rewrites": [{ "source": "/((?!api/|assets/|sw\.js|workbox-.*|manifest\.webmanifest|.*\.(?:png|svg|ico|js|json|txt|woff2)).*)", "destination": "/index.html" }],
+  "rewrites": [{ "source": "/((?!api/|assets/|sw\\.js|workbox-.*|manifest\\.webmanifest|.*\\.(?:png|svg|ico|js|json|txt|woff2)).*)", "destination": "/index.html" }],
   "headers": [
     {
       "source": "/(.*)",
