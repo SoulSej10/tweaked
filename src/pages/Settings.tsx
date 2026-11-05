@@ -8,11 +8,11 @@ import { friendlyAuthError, isEmail, passwordProblem } from '../lib/authErrors'
 import { useAsync, useInstall, useSettings, useTitle } from '../lib/hooks'
 import { formatIngredient, type UnitSystem } from '../lib/parse'
 import { AVOID, CUISINES, EFFORTS, KINDS } from '../lib/prefs'
-import { VOICE_LANGS, type TextSize } from '../lib/settings'
+import { ACCENTS, VOICE_LANGS, type TextSize } from '../lib/settings'
 import { supabase } from '../lib/supabase'
 import { applyTheme, loadTheme, saveTheme, type Theme } from '../lib/theme'
 import { usePrefs } from '../prefs'
-import { ArrowsClockwise, CheckCircle, DeviceMobile, DownloadSimple, SignOut, Trash } from '@phosphor-icons/react'
+import { ArrowsClockwise, Check, CheckCircle, DeviceMobile, DownloadSimple, SignOut, Trash } from '@phosphor-icons/react'
 
 function download(name: string, text: string, type: string) {
   const url = URL.createObjectURL(new Blob([text], { type }))
@@ -245,6 +245,24 @@ export default function Settings() {
         </label>
 
         <h2>Appearance</h2>
+        <div className="setrow">
+          <b>Accent colour</b>
+          <div className="swatches" role="group" aria-label="Accent colour">
+            {ACCENTS.map((a) => (
+              <button
+                key={a.id}
+                className="swatch"
+                style={{ ['--sw' as string]: a.color }}
+                aria-pressed={settings.accent === a.id}
+                aria-label={a.label}
+                title={a.label}
+                onClick={() => update({ accent: a.id })}
+              >
+                {settings.accent === a.id && <Check size={18} weight="bold" aria-hidden />}
+              </button>
+            ))}
+          </div>
+        </div>
         <div className="setrow">
           <b>Theme</b>
           <Seg<Theme> value={theme} name="Theme" onPick={pick} options={[{ id: 'system', label: 'Match phone' }, { id: 'light', label: 'Light' }, { id: 'dark', label: 'Dark' }]} />

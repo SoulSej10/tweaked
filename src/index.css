@@ -7,45 +7,68 @@
 }
 
 /* ---------- design tokens ---------- */
-/* Calm palette: warm paper, ink, and one muted teal. The butter yellow is the "highlighter" used for tweaks. */
+/*
+  One accent colour drives the whole look. People pick it in Me > Appearance (data-accent on <html>);
+  each accent only supplies four values, everything else is mixed from them so the page is tinted to match.
+*/
 :root {
-  --bg: #f5f4ef;
-  --surface: #fcfbf8;
-  --ink: #1d2927;
-  --muted: #66736f;
-  --line: #e4e2d9;
-  --accent: #2b6d67;
-  --accent-ink: #ffffff;
-  --accent-soft: #e1eeea;
-  --olive: #2b6d67;
-  --leaf: #4f8a58;
+  /* the picker's accents: --a-l/--a-ld = fill and text-on-fill in light mode, --a-d/--a-dd in dark mode */
+  --a-l: #c2255c; --a-ld: #ffffff; --a-d: #f783ac; --a-dd: #2b0716;
+
+  --accent: var(--a-l);
+  --accent-ink: var(--a-ld);
+  --bg: color-mix(in srgb, var(--accent) 5%, #f8f6f1);
+  --surface: color-mix(in srgb, var(--accent) 1.5%, #fefdfb);
+  --ink: #1f2226;
+  --muted: #6b6f78;
+  --line: color-mix(in srgb, var(--accent) 9%, #e6e2da);
+  --accent-soft: color-mix(in srgb, var(--accent) 12%, #fefdfb);
+  --olive: var(--accent);
+  --leaf: #3f7d20;
   --mark: #fbe9b4;
-  --danger: #b23a2e;
-  --heart: #d9534f;
-  --t0: #e2eee8; --t1: #f1e9d2; --t2: #efe0dc; --t3: #dde8ee; --t4: #e6e0ec; --t5: #f3ebcb;
-  --shadow: 0 1px 0 rgb(29 41 39 / 0.04);
+  --danger: #c0392b;
+  --heart: #e0245e;
+  /* pastel tiles behind dish emoji and stat cards */
+  --t0: #fbe1ea; --t1: #fdebc6; --t2: #dcefdc; --t3: #d9e7fb; --t4: #e9dffa; --t5: #fddccb;
+  --shadow: 0 1px 0 rgb(31 34 38 / 0.04);
   --radius: 14px;
   --display: 'Twemoji Country Flags', 'Bricolage Grotesque Variable', 'Nunito Variable', system-ui, sans-serif;
   --sans: 'Twemoji Country Flags', 'Nunito Variable', system-ui, -apple-system, 'Segoe UI', sans-serif;
   color-scheme: light;
 }
 
+:root[data-accent='berry']  { --a-l: #c2255c; --a-ld: #ffffff; --a-d: #f783ac; --a-dd: #2b0716; }
+:root[data-accent='grape']  { --a-l: #6741d9; --a-ld: #ffffff; --a-d: #b197fc; --a-dd: #1a0a45; }
+:root[data-accent='ocean']  { --a-l: #1c64d1; --a-ld: #ffffff; --a-d: #74a7ff; --a-dd: #06173a; }
+:root[data-accent='matcha'] { --a-l: #3f7d20; --a-ld: #ffffff; --a-d: #9bd16b; --a-dd: #10230a; }
+:root[data-accent='tomato'] { --a-l: #c9342a; --a-ld: #ffffff; --a-d: #ff8a7d; --a-dd: #3a0b07; }
+:root[data-accent='mango']  { --a-l: #a65300; --a-ld: #ffffff; --a-d: #ffb454; --a-dd: #2e1700; }
+:root[data-accent='teal']   { --a-l: #2b6d67; --a-ld: #ffffff; --a-d: #74c6bb; --a-dd: #052421; }
+
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme='light']) {
-    --bg: #101716; --surface: #172120; --ink: #e4edea; --muted: #8fa19c; --line: #243230;
-    --accent: #74c6bb; --accent-ink: #052421; --accent-soft: #1d3532; --olive: #74c6bb; --leaf: #8fcf95;
-    --mark: #4b4118; --danger: #ef8a7f; --heart: #ef7f7b;
-    --t0: #1c2d29; --t1: #2a281c; --t2: #2d2422; --t3: #1d2830; --t4: #272331; --t5: #2c2819;
+    --accent: var(--a-d); --accent-ink: var(--a-dd);
+    --bg: color-mix(in srgb, var(--accent) 6%, #13171b);
+    --surface: color-mix(in srgb, var(--accent) 5%, #1b2024);
+    --ink: #eceef1; --muted: #9aa1ab;
+    --line: color-mix(in srgb, var(--accent) 12%, #2a3036);
+    --accent-soft: color-mix(in srgb, var(--accent) 20%, #1b2024);
+    --leaf: #9bd16b; --mark: #4b4118; --danger: #f2877f; --heart: #f06595;
+    --t0: #3a2230; --t1: #3a3220; --t2: #20352a; --t3: #1f2e44; --t4: #2e2742; --t5: #3a2a22;
     --shadow: none;
     color-scheme: dark;
   }
 }
 
 :root[data-theme='dark'] {
-  --bg: #101716; --surface: #172120; --ink: #e4edea; --muted: #8fa19c; --line: #243230;
-  --accent: #74c6bb; --accent-ink: #052421; --accent-soft: #1d3532; --olive: #74c6bb; --leaf: #8fcf95;
-  --mark: #4b4118; --danger: #ef8a7f; --heart: #ef7f7b;
-  --t0: #1c2d29; --t1: #2a281c; --t2: #2d2422; --t3: #1d2830; --t4: #272331; --t5: #2c2819;
+  --accent: var(--a-d); --accent-ink: var(--a-dd);
+  --bg: color-mix(in srgb, var(--accent) 6%, #13171b);
+  --surface: color-mix(in srgb, var(--accent) 5%, #1b2024);
+  --ink: #eceef1; --muted: #9aa1ab;
+  --line: color-mix(in srgb, var(--accent) 12%, #2a3036);
+  --accent-soft: color-mix(in srgb, var(--accent) 20%, #1b2024);
+  --leaf: #9bd16b; --mark: #4b4118; --danger: #f2877f; --heart: #f06595;
+  --t0: #3a2230; --t1: #3a3220; --t2: #20352a; --t3: #1f2e44; --t4: #2e2742; --t5: #3a2a22;
   --shadow: none;
   color-scheme: dark;
 }
@@ -537,3 +560,49 @@ body { -webkit-font-smoothing: antialiased; }
 .tile-emoji { display: inline-grid; place-items: center; color: var(--accent); }
 .tile.on, .option.on { background: var(--accent-soft); border-color: var(--accent); }
 .dots span.on { background: var(--accent); }
+
+
+/* ======================================================================
+   Lively layer: colour where it helps (tiles, active states), still quiet elsewhere.
+   ====================================================================== */
+/* chips: the main filter is a solid pop of colour, the secondary one is ink */
+.chip.on { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+.chip.alt.on { background: var(--ink); color: var(--bg); border-color: var(--ink); }
+.chip { background: var(--surface); }
+
+/* bottom bar: the active tab sits in a soft colour pill */
+.tab:not(.add) svg { box-sizing: content-box; padding: 4px 18px; border-radius: 999px; transition: background 0.2s; }
+.tab.on:not(.add) svg { background: var(--accent-soft); }
+.tab { gap: 0; }
+
+/* Home: coloured stat tiles and quick actions */
+.stats .stat:nth-child(1) { background: var(--t0); border-color: transparent; }
+.stats .stat:nth-child(2) { background: var(--t1); border-color: transparent; }
+.stats .stat:nth-child(3) { background: var(--t3); border-color: transparent; }
+.stats .stat span { color: color-mix(in srgb, var(--ink) 72%, transparent); }
+.mini-stats .stat:nth-child(1) { background: var(--t0); border-color: transparent; }
+.mini-stats .stat:nth-child(2) { background: var(--t1); border-color: transparent; }
+.mini-stats .stat:nth-child(3) { background: var(--t3); border-color: transparent; }
+.qa { padding: 12px 4px 10px; gap: 8px; }
+.qa > svg:first-child { box-sizing: content-box; padding: 9px; border-radius: 12px; color: var(--ink); }
+.quick .qa:nth-child(1) > svg:first-child { background: var(--t2); }
+.quick .qa:nth-child(2) > svg:first-child { background: var(--t5); }
+.quick .qa:nth-child(3) > svg:first-child { background: var(--t4); }
+.quick .qa:nth-child(4) > svg:first-child { background: var(--t0); }
+.hero-badge { background: var(--accent); color: var(--accent-ink); border-color: transparent; }
+.callout { background: var(--accent-soft); }
+.profile .avatar, .avatar { background: var(--accent); color: var(--accent-ink); }
+.brand-mark { background: var(--accent); color: var(--accent-ink); }
+.pill { background: var(--accent-soft); color: var(--accent); }
+.pill.alt { background: var(--t1); color: var(--ink); }
+.empty-icon, .splash-icon { color: var(--accent); }
+.dmeta span:first-child { color: var(--accent); font-weight: 700; }
+a { color: var(--accent); }
+.progress span { background: var(--accent); }
+.btn.primary:hover { filter: brightness(1.07); }
+
+/* accent picker in Me > Appearance */
+.swatches { display: flex; flex-wrap: wrap; gap: 10px; }
+.swatch { width: 40px; height: 40px; border-radius: 50%; border: 3px solid var(--bg); outline: 2px solid transparent; background: var(--sw); cursor: pointer; display: grid; place-items: center; color: #fff; transition: transform 0.12s; }
+.swatch:active { transform: scale(0.94); }
+.swatch[aria-pressed='true'] { outline-color: var(--ink); }
