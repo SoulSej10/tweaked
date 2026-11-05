@@ -606,3 +606,37 @@ a { color: var(--accent); }
 .swatch { width: 40px; height: 40px; border-radius: 50%; border: 3px solid var(--bg); outline: 2px solid transparent; background: var(--sw); cursor: pointer; display: grid; place-items: center; color: #fff; transition: transform 0.12s; }
 .swatch:active { transform: scale(0.94); }
 .swatch[aria-pressed='true'] { outline-color: var(--ink); }
+
+/* ---------- themed picker (replaces the browser's own dropdown) ---------- */
+.picker-btn { display: inline-flex; align-items: center; justify-content: space-between; gap: 8px; min-height: 36px; padding: 4px 12px; border-radius: 12px; border: 1px solid var(--line); background: var(--surface); color: var(--ink); font: inherit; font-size: 0.9rem; font-weight: 650; cursor: pointer; }
+.picker-btn:active { transform: scale(0.98); }
+.picker-btn.full { width: 100%; min-height: 44px; font-size: 0.95rem; }
+.sheet { width: 100%; max-width: 560px; margin: auto auto 0; padding: 8px 16px calc(16px + env(safe-area-inset-bottom)); border: 0; border-radius: 22px 22px 0 0; background: var(--surface); color: var(--ink); box-shadow: 0 -10px 40px rgb(0 0 0 / 0.25); animation: sheetUp 0.22s ease-out both; }
+.sheet::backdrop { background: rgb(0 0 0 / 0.45); }
+.sheet-handle { width: 40px; height: 4px; border-radius: 2px; margin: 4px auto 10px; background: var(--line); }
+.sheet-title { margin: 0 0 6px; font-size: 1rem; text-align: center; color: var(--muted); font-weight: 650; }
+.sheet-list { display: grid; gap: 4px; }
+.sheet-opt { display: flex; align-items: center; justify-content: space-between; gap: 12px; width: 100%; min-height: 52px; padding: 8px 14px; border: 0; border-radius: 14px; background: transparent; color: var(--ink); font: inherit; text-align: left; cursor: pointer; }
+.sheet-opt b { display: block; font-weight: 650; }
+.sheet-opt small { display: block; color: var(--muted); font-size: 0.8rem; font-weight: 500; }
+.sheet-opt.on { background: var(--accent-soft); color: var(--accent); }
+.sheet-opt:active { background: var(--accent-soft); }
+@keyframes sheetUp { from { transform: translateY(24px); opacity: 0; } to { transform: none; opacity: 1; } }
+
+/* ---------- Explore / What I have switch + pantry ---------- */
+.modes { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; margin: 2px 16px 10px; padding: 4px; border-radius: 14px; background: var(--accent-soft); }
+.modes button { display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-height: 38px; border: 0; border-radius: 11px; background: transparent; color: var(--muted); font: inherit; font-weight: 650; cursor: pointer; }
+.modes button.on { background: var(--surface); color: var(--accent); box-shadow: 0 1px 2px rgb(0 0 0 / 0.1); }
+.pantry-box { margin: 0 16px; padding: 14px; background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); display: flex; flex-direction: column; gap: 10px; }
+.pantry-box p { margin: 0; }
+.pantry-input { display: flex; gap: 8px; }
+.pantry-input input { flex: 1; min-width: 0; }
+.pchips { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.pchip { display: inline-flex; align-items: center; gap: 4px; padding: 4px 6px 4px 12px; border-radius: 999px; background: var(--accent); color: var(--accent-ink); font-size: 0.88rem; font-weight: 650; }
+.pchip button { display: grid; place-items: center; width: 22px; height: 22px; padding: 0; border: 0; border-radius: 50%; background: color-mix(in srgb, var(--accent-ink) 22%, transparent); color: inherit; cursor: pointer; }
+.suggest { gap: 6px; }
+.suggest .chip { min-height: 30px; padding: 0 10px; font-size: 0.82rem; color: var(--muted); }
+.pnote { margin: 6px 0 0; font-size: 0.78rem; color: var(--muted); line-height: 1.35; }
+.pnote b { color: var(--accent); font-weight: 700; }
+.rbody .pnote { margin-top: 2px; }
+.pantry .cards { padding-top: 0; }

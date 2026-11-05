@@ -1,7 +1,8 @@
-import { ArrowSquareOut, DiceFive, Link as LinkIcon, MagnifyingGlass, Plus, Sparkle } from '@phosphor-icons/react'
+import { ArrowSquareOut, Basket, Compass, DiceFive, Link as LinkIcon, MagnifyingGlass, Plus, Sparkle } from '@phosphor-icons/react'
 import { useEffect, useMemo, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useSearchParams } from 'react-router-dom'
 import { DishCard } from '../components/DishCard'
+import { PantryPanel } from '../components/PantryPanel'
 import { Shell } from '../components/Shell'
 import { browseDishes, conflicts, isSimple, loadCatalog, searchCatalog, searchWebSmart, urlDishId, type Browse, type Dish, type SearchOutcome } from '../lib/discover'
 import { useAsync } from '../lib/hooks'
@@ -23,6 +24,9 @@ function useDebounced<T>(value: T, ms: number): T {
 
 export default function Discover() {
   const { prefs } = usePrefs()
+  const [params, setParams] = useSearchParams()
+  const pantryMode = params.get('pantry') === '1'
+  const setMode = (pantry: boolean) => setParams(pantry ? { pantry: '1' } : {}, { replace: true })
   const [q, setQ] = useState('')
   const [pick, setPick] = useState<Browse>({ type: 'mix' })
   const [simple, setSimple] = useState(true)
@@ -76,8 +80,16 @@ export default function Discover() {
     <Shell>
       <header className="topbar">
         <h1>Discover</h1>
-        <button className="icon-btn" onClick={() => { choose({ type: 'mix' }); setSpin((s) => s + 1) }} aria-label="Surprise me"><DiceFive size={20} /></button>
+        {!pantryMode && <button className="icon-btn" onClick={() => { choose({ type: 'mix' }); setSpin((s) => s + 1) }} aria-label="Surprise me"><DiceFive size={20} /></button>}
       </header>
+
+      <div className="modes" role="tablist" aria-label="How to find a dish">
+        <button role="tab" aria-selected={!pantryMode} className={!pantryMode ? 'on' : ''} onClick={() => setMode(false)}><Compass size={18} aria-hidden /> Explore</button>
+        <button role="tab" aria-selected={pantryMode} className={pantryMode ? 'on' : ''} onClick={() => setMode(true)}><Basket size={18} aria-hidden /> What I have</button>
+      </div>
+
+      {pantryMode ? <PantryPanel /> : (
+        <>
 
       <form className="searchbar" onSubmit={(e) => e.preventDefault()}>
         <div className="searchfield">
@@ -172,6 +184,8 @@ export default function Discover() {
               <button className="btn" onClick={() => setShown(shown + PAGE)}>Show more ({browseList.length - shown} left)</button>
             </div>
           )}
+        </>
+      )}
         </>
       )}
     </Shell>

@@ -13,6 +13,7 @@ import { supabase } from '../lib/supabase'
 import { applyTheme, loadTheme, saveTheme, type Theme } from '../lib/theme'
 import { usePrefs } from '../prefs'
 import { ArrowsClockwise, Check, CheckCircle, DeviceMobile, DownloadSimple, SignOut, Trash } from '@phosphor-icons/react'
+import { Picker } from '../components/Picker'
 
 function download(name: string, text: string, type: string) {
   const url = URL.createObjectURL(new Blob([text], { type }))
@@ -237,12 +238,10 @@ export default function Settings() {
         </div>
         <label className="switch card"><input type="checkbox" checked={settings.keepAwake} onChange={(e) => update({ keepAwake: e.target.checked })} /><span>Keep the screen on while cooking</span></label>
         <label className="switch card"><input type="checkbox" checked={settings.vibrate} onChange={(e) => update({ vibrate: e.target.checked })} /><span>Vibrate when a timer ends</span></label>
-        <label className="setrow">
+        <div className="setrow">
           <b>Voice notes language</b>
-          <select value={settings.voiceLang} onChange={(e) => update({ voiceLang: e.target.value })}>
-            {VOICE_LANGS.map((l) => <option key={l.id} value={l.id}>{l.label}</option>)}
-          </select>
-        </label>
+          <Picker label="Voice notes language" value={settings.voiceLang} onChange={(voiceLang) => update({ voiceLang })} options={VOICE_LANGS.map((l) => ({ id: l.id, label: l.label }))} />
+        </div>
 
         <h2>Appearance</h2>
         <div className="setrow">

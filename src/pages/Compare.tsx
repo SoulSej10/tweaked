@@ -3,6 +3,7 @@ import { getRecipe } from '../lib/api'
 import { useAsync, useTitle } from '../lib/hooks'
 import { formatIngredient } from '../lib/parse'
 import { BackLink } from '../components/Brand'
+import { Picker } from '../components/Picker'
 
 function Column({ lines, other }: { lines: string[]; other: string[] }) {
   return (
@@ -44,9 +45,13 @@ export default function Compare() {
   const stB = b.steps.map((s) => s.text)
 
   const picker = (key: 'a' | 'b', current: string) => (
-    <select value={current} onChange={(e) => select(key, e.target.value)} aria-label={`Version ${key === 'a' ? 'left' : 'right'}`}>
-      {asc.map((v) => <option key={v.id} value={v.id}>v{v.version_number}{v.is_original ? ' (original)' : ''}</option>)}
-    </select>
+    <Picker
+      className="full"
+      label={key === 'a' ? 'First version' : 'Second version'}
+      value={current}
+      onChange={(id) => select(key, id)}
+      options={asc.map((v) => ({ id: v.id, label: `v${v.version_number}${v.is_original ? ' (original)' : ''}`, hint: v.change_note ?? undefined }))}
+    />
   )
 
   return (

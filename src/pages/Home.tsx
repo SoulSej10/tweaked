@@ -79,7 +79,7 @@ export default function Home() {
 
       <nav className="quick" aria-label="Quick actions">
         <Link to="/shopping" className="qa"><ShoppingCart size={22} aria-hidden /><span>Shopping list</span>{shopping > 0 && <span className="badge">{shopping}</span>}</Link>
-        <Link to="/recipes?pantry=1" className="qa"><CookingPot size={22} aria-hidden /><span>What can I make?</span></Link>
+        <Link to="/discover?pantry=1" className="qa"><CookingPot size={22} aria-hidden /><span>What can I make?</span></Link>
         <button className="qa" onClick={() => (hero ? nav(`/dish/${encodeURIComponent(hero.id)}`) : setBump((b) => b + 1))}><DiceFive size={22} aria-hidden /><span>Surprise me</span></button>
         <Link to="/new" className="qa"><PencilSimpleLine size={22} aria-hidden /><span>Add recipe</span></Link>
       </nav>

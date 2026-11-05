@@ -1,11 +1,12 @@
 import { useMemo, useState } from 'react'
-import { Link, useNavigate, useSearchParams } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { Shell } from '../components/Shell'
 import { listRecipes } from '../lib/api'
 import { dishEmoji, tileIndex } from '../lib/emoji'
 import { useAsync } from '../lib/hooks'
 import type { RecipeCard } from '../lib/types'
 import { BookOpen, DiceFive, Heart, MagnifyingGlass, Package } from '@phosphor-icons/react'
+import { Picker } from '../components/Picker'
 
 type Filter = 'all' | 'fav' | 'recent' | 'never' | 'home'
 type Sort = 'updated' | 'az' | 'most' | 'cooked'
@@ -24,9 +25,7 @@ export default function Library() {
   const [q, setQ] = useState('')
   const [filter, setFilter] = useState<Filter>('all')
   const [tag, setTag] = useState<string | null>(null)
-  const [params] = useSearchParams()
   const [sort, setSort] = useState<Sort>('updated')
-  const [pantry, setPantry] = useState(params.get('pantry') === '1')
   const nav = useNavigate()
   const [now] = useState(() => Date.now())
 
@@ -34,7 +33,6 @@ export default function Library() {
 
   const shown = useMemo(() => {
     const term = q.trim().toLowerCase()
-    const have = term.split(/[,\s]+/).filter(Boolean)
     const list = (data ?? []).filter((r: RecipeCard) => {
       if (filter === 'fav' && !r.favorite) return false
       if (filter === 'recent' && !(r.last_cooked_at && now - new Date(r.last_cooked_at).getTime() < WEEK * 2)) return false
@@ -42,13 +40,6 @@ export default function Library() {
       if (filter === 'home' && !r.bring_from_home) return false
       if (tag && !r.tags.includes(tag)) return false
       if (!term) return true
-      if (pantry) {
-        // "I have rice, egg": show dishes where most of the ingredients are on hand.
-        const names = r.ingredientNames
-        if (names.length === 0) return false
-        const matched = names.filter((n) => have.some((h) => n.includes(h))).length
-        return matched / names.length >= 0.5
-      }
       return r.title.toLowerCase().includes(term) || r.ingredientNames.some((n) => n.includes(term))
     })
     const by: Record<Sort, (a: RecipeCard, b: RecipeCard) => number> = {
@@ -58,7 +49,7 @@ export default function Library() {
       cooked: (a, b) => (b.last_cooked_at ?? '').localeCompare(a.last_cooked_at ?? ''),
     }
     return [...list].sort(by[sort])
-  }, [data, q, filter, tag, pantry, now, sort])
+  }, [data, q, filter, tag, now, sort])
 
   function surprise() {
     const pool = shown.length ? shown : data ?? []
@@ -77,27 +68,29 @@ export default function Library() {
           <MagnifyingGlass size={18} aria-hidden />
           <input
           type="search"
-          placeholder={pantry ? 'I have: rice, egg, garlic' : 'Search name or ingredient'}
+          placeholder="Search name or ingredient"
           value={q}
           onChange={(e) => setQ(e.target.value)}
           aria-label="Search recipes"
         />
         </div>
       </div>
-      <label className="switch">
-        <input type="checkbox" checked={pantry} onChange={(e) => setPantry(e.target.checked)} />
-        <span>Pantry mode <small>(what can I make with what I have?)</small></span>
-      </label>
 
       <div className="sortrow">
-        <label className="inline-label"><span>Sort</span>
-          <select value={sort} onChange={(e) => setSort(e.target.value as Sort)} aria-label="Sort recipes">
-            <option value="updated">Recently changed</option>
-            <option value="cooked">Recently cooked</option>
-            <option value="most">Most cooked</option>
-            <option value="az">A to Z</option>
-          </select>
-        </label>
+        <div className="inline-label">
+          <span>Sort</span>
+          <Picker<Sort>
+            label="Sort recipes"
+            value={sort}
+            onChange={setSort}
+            options={[
+              { id: 'updated', label: 'Recently changed' },
+              { id: 'cooked', label: 'Recently cooked' },
+              { id: 'most', label: 'Most cooked' },
+              { id: 'az', label: 'A to Z' },
+            ]}
+          />
+        </div>
         <span className="muted small">{shown.length} {shown.length === 1 ? 'recipe' : 'recipes'}</span>
       </div>
 

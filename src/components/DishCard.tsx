@@ -2,7 +2,9 @@ import { Link } from 'react-router-dom'
 import { thumbUrl, type Dish } from '../lib/discover'
 import { dishEmoji, tileIndex } from '../lib/emoji'
 
-export function DishCard({ dish, wide = false }: { dish: Dish; wide?: boolean }) {
+export type PantryNote = { have: number; total: number; missing: string[] }
+
+export function DishCard({ dish, wide = false, note }: { dish: Dish; wide?: boolean; note?: PantryNote }) {
   return (
     <Link to={`/dish/${encodeURIComponent(dish.id)}`} className={`dcard ${wide ? 'wide' : ''}`}>
       <div className={`dthumb t${tileIndex(dish.name)}`}>
@@ -15,6 +17,12 @@ export function DishCard({ dish, wide = false }: { dish: Dish; wide?: boolean })
           {dish.cuisine && <span>{dish.cuisine}</span>}
           <span>{dish.minutes ? `${dish.minutes} min` : `${dish.ingredients.length} ingredients`}</span>
         </p>
+        {note && (
+          <p className="pnote">
+            <b>Have {note.have} of {note.total}</b>
+            {note.missing.length > 0 ? ` · need ${note.missing.slice(0, 3).join(', ')}${note.missing.length > 3 ? ` +${note.missing.length - 3}` : ''}` : ' · nothing to buy'}
+          </p>
+        )}
       </div>
     </Link>
   )

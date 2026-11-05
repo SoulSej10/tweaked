@@ -8,6 +8,7 @@ import { useAsync, useSettings, useTitle } from '../lib/hooks'
 import { addItems } from '../lib/shopping'
 import { convertIngredient, formatIngredient, scaleAmount, type UnitSystem } from '../lib/parse'
 import { ArrowLeft, Heart, Package, ShareNetwork, ShoppingCart } from '@phosphor-icons/react'
+import { Picker } from '../components/Picker'
 
 export default function Detail() {
   const { id = '' } = useParams()
@@ -137,16 +138,19 @@ export default function Detail() {
 
         {versions.length > 1 && (
           <div className="versions">
-            <label>
-              Version{' '}
-              <select value={shown?.id} onChange={(e) => setViewId(e.target.value)}>
-                {versions.map((v) => (
-                  <option key={v.id} value={v.id}>
-                    v{v.version_number}{v.is_original ? ' (original)' : ''}{v.id === currentId ? ' · current' : ''}
-                  </option>
-                ))}
-              </select>
-            </label>
+            <div className="inline-label">
+              <span>Version</span>
+              <Picker
+                label="Choose a version"
+                value={shown?.id ?? ''}
+                onChange={(id) => setViewId(id)}
+                options={versions.map((v) => ({
+                  id: v.id,
+                  label: `v${v.version_number}${v.is_original ? ' (original)' : ''}${v.id === currentId ? ' · current' : ''}`,
+                  hint: v.change_note ?? (v.is_original ? 'The first version you saved' : undefined),
+                }))}
+              />
+            </div>
             <Link className="btn" to={`/recipe/${recipe.id}/compare`}>Compare</Link>
             {!isCurrent && <button className="btn" onClick={rollback} disabled={busy}>Make this current</button>}
           </div>
