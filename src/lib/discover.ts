@@ -1,4 +1,4 @@
-import { AVOID, CUISINES, KINDS, cuisineOf, type Cuisine, type Effort, type Preferences } from './prefs'
+import { AVOID, CUISINES, KINDS, cuisineById, cuisineOf, homeCuisine, type Cuisine, type Effort, type Preferences } from './prefs'
 import { compact, interpret, normalize, wordMatches } from './fuzzy'
 import { parseIngredientLine, parseStepLine } from './parse'
 import type { Ingredient, Step } from './types'
@@ -808,26 +808,26 @@ export async function buildFeed(prefs: Preferences, history: History, seed: numb
   }
   const solid = scored.filter((d) => d.category !== 'Drink')
 
-  // "Picked for you" is built from the sign-up quiz: about half from the cuisines the person chose, the rest from
-  // the kinds of dish they chose, each drawn at random. So the first card (Tonight's pick) is always something they
-  // said they like, and their favourite cuisines turn up often even though the kinds cover far more dishes.
-  // Other dishes only fill in when the quiz alone cannot make a full list.
-  const fromCuisine = prefs.cuisines.length ? solid.filter(cuisineHit) : []
-  const fromKind = solid.filter((d) => quizMatch(d) && !(prefs.cuisines.length && cuisineHit(d)))
+  // "Picked for you" is tied to the person's own country: dishes from their home cuisine, drawn at random each
+  // opening and leaning towards the kinds of dish they like. Only when home has too few dishes do we fill in from
+  // their other chosen cuisines, then their chosen kinds.
+  const home = homeCuisine(prefs)
+  const fromHome = home ? solid.filter((d) => d.cuisineId === home) : []
   const picked: Dish[] = []
-  while (picked.length < 10 && (fromCuisine.length > 0 || fromKind.length > 0)) {
-    const useCuisine = fromCuisine.length > 0 && (fromKind.length === 0 || rnd() < 0.55)
-    const d = (useCuisine ? fromCuisine : fromKind).shift()
-    if (d && !used.has(d.id)) {
+  for (const d of fromHome) {
+    if (picked.length >= 10) break
+    if (!used.has(d.id)) {
       used.add(d.id)
       picked.push(d)
     }
   }
-  if (picked.length < 6) picked.push(...take(solid.filter((d) => !quizMatch(d)), 6 - picked.length))
+  if (picked.length < 10) picked.push(...take(solid.filter((d) => cuisineHit(d)), 10 - picked.length))
+  if (picked.length < 10) picked.push(...take(solid.filter((d) => quizMatch(d)), 10 - picked.length))
+  if (picked.length < 6) picked.push(...take(solid, 6 - picked.length))
   // Lead with a dish that has a photo, if there is one among them.
   const lead = picked.findIndex((d) => d.thumb)
   if (lead > 0) [picked[0], picked[lead]] = [picked[lead], picked[0]]
-  push('picked', 'Picked for you', hasQuiz ? 'Matched to the tastes you chose' : 'Based on what you cook', picked)
+  push('picked', 'Picked for you', home ? `From ${cuisineById(home)?.label ?? 'home'} kitchens` : hasQuiz ? 'Matched to the tastes you chose' : 'Based on what you cook', picked)
   push('few', 'Short shopping list', 'Six ingredients or fewer', take(solid.filter((d) => d.ingredients.length <= 6), 10))
   push('quick', 'Quick to cook', 'Ready in 30 minutes or less', take(solid.filter((d) => d.minutes !== null && d.minutes <= 30), 8))
   for (const c of cuisines.slice(0, 2)) {

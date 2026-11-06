@@ -6,7 +6,7 @@ import { KINDS } from './prefs'
 describe('home feed: random every opening, bound to the sign-up quiz', () => {
   let buildFeed: typeof import('./discover').buildFeed
   const hist = { cuisines: {}, categories: {}, savedIds: new Set<string>() }
-  const prefs = { cuisines: ['filipino', 'japanese', 'american'], kinds: ['chicken', 'meat', 'pasta', 'veggie', 'breakfast', 'sweet'], effort: 'easy' as const, avoid: ['nuts', 'alcohol'] }
+  const prefs = { country: 'filipino', cuisines: ['filipino', 'japanese', 'american'], kinds: ['chicken', 'meat', 'pasta', 'veggie', 'breakfast', 'sweet'], effort: 'easy' as const, avoid: ['nuts', 'alcohol'] }
   const cats = new Set(KINDS.filter((k) => prefs.kinds.includes(k.id)).flatMap((k) => k.categories as readonly string[]).map((c) => c.toLowerCase()))
   const matches = (d: { cuisineId: string | null; category: string }) => Boolean(d.cuisineId && prefs.cuisines.includes(d.cuisineId)) || cats.has(d.category.toLowerCase())
 
@@ -25,7 +25,7 @@ describe('home feed: random every opening, bound to the sign-up quiz', () => {
       heroes.add(picked.dishes[0].id)
       lists.add(picked.dishes.map((d) => d.id).join())
     }
-    expect(heroes.size).toBeGreaterThanOrEqual(12)
+    expect(heroes.size).toBeGreaterThanOrEqual(4)
     expect(lists.size).toBe(25)
   })
 
@@ -37,20 +37,19 @@ describe('home feed: random every opening, bound to the sign-up quiz', () => {
     }
   })
 
-  it('leans on the cuisines they chose without losing the variety', async () => {
-    let heroFromCuisine = 0
-    let withCuisine = 0
-    const runs = 60
-    for (let i = 1; i <= runs; i++) {
+  it('picks come from the home country, in a different order each opening', async () => {
+    const lists = new Set<string>()
+    const heroes = new Set<string>()
+    for (let i = 1; i <= 30; i++) {
       const picked = (await buildFeed(prefs, hist, i * 15485863)).find((s) => s.id === 'picked')!
-      const inCuisine = picked.dishes.filter((d) => d.cuisineId && prefs.cuisines.includes(d.cuisineId)).length
-      if (inCuisine >= 3) withCuisine++
-      if (picked.dishes[0].cuisineId && prefs.cuisines.includes(picked.dishes[0].cuisineId)) heroFromCuisine++
+      // every Filipino dish available comes first, so the list opens with home cooking
+      expect(picked.dishes.slice(0, 3).every((d) => d.cuisineId === 'filipino')).toBe(true)
+      expect(picked.dishes[0].cuisineId).toBe('filipino')
+      lists.add(picked.dishes.map((d) => d.id).join())
+      heroes.add(picked.dishes[0].id)
     }
-    // roughly half the opening picks come from their cuisines, never all of them and never almost none
-    expect(heroFromCuisine / runs).toBeGreaterThan(0.3)
-    expect(heroFromCuisine / runs).toBeLessThan(0.9)
-    expect(withCuisine / runs).toBeGreaterThan(0.9)
+    expect(lists.size).toBeGreaterThan(20)
+    expect(heroes.size).toBeGreaterThanOrEqual(4)
   })
 
   it('keeps hiding what the person asked to skip', async () => {

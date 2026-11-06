@@ -6,7 +6,7 @@ import { Brand } from '../components/Brand'
 import { CookingPot, Hourglass, Lightning } from '@phosphor-icons/react'
 import { pendingShare } from '../lib/share'
 
-const STEPS = ['welcome', 'cuisines', 'kinds', 'effort', 'avoid'] as const
+const STEPS = ['welcome', 'country', 'cuisines', 'kinds', 'effort', 'avoid'] as const
 
 export default function Onboarding() {
   const { prefs, onboarded, save } = usePrefs()
@@ -46,6 +46,20 @@ export default function Onboarding() {
             <Brand />
             <h1>Let's make this kitchen yours</h1>
             <p className="lead">Four quick taps and Tweaked will fill your home screen with easy dishes you will actually want to cook. You can change any of it later.</p>
+          </>
+        )}
+
+        {name === 'country' && (
+          <>
+            <h1>Where is home?</h1>
+            <p className="lead">Your top picks will come from your own country's kitchen.</p>
+            <div className="tiles">
+              {CUISINES.map((c) => (
+                <button key={c.id} className={`tile ${draft.country === c.id ? 'on' : ''}`} aria-pressed={draft.country === c.id} onClick={() => setDraft((d) => ({ ...d, country: c.id, cuisines: d.cuisines.includes(c.id) ? d.cuisines : [...d.cuisines, c.id] }))}>
+                  <span className="tile-emoji" aria-hidden>{c.flag}</span>{c.label}
+                </button>
+              ))}
+            </div>
           </>
         )}
 

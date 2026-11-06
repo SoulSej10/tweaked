@@ -7,7 +7,7 @@ import { exportEverything, listRecipes } from '../lib/api'
 import { friendlyAuthError, isEmail, passwordProblem } from '../lib/authErrors'
 import { useAsync, useInstall, useSettings, useTitle } from '../lib/hooks'
 import { formatIngredient, type UnitSystem } from '../lib/parse'
-import { AVOID, CUISINES, EFFORTS, KINDS } from '../lib/prefs'
+import { AVOID, CUISINES, EFFORTS, KINDS, homeCuisine } from '../lib/prefs'
 import { ACCENTS, VOICE_LANGS, type TextSize } from '../lib/settings'
 import { supabase } from '../lib/supabase'
 import { applyTheme, loadTheme, saveTheme, type Theme } from '../lib/theme'
@@ -224,6 +224,7 @@ export default function Settings() {
 
         <h2>My taste</h2>
         <div className="panel">
+          <p><b>Home country</b><br /><span className="muted">{labels([homeCuisine(prefs)], CUISINES, 'Not set')}</span></p>
           <p><b>Cuisines</b><br /><span className="muted">{labels(prefs.cuisines, CUISINES, 'Anything')}</span></p>
           <p><b>Dishes</b><br /><span className="muted">{labels(prefs.kinds, KINDS, 'Anything')}</span></p>
           <p><b>Effort</b><br /><span className="muted">{labels([prefs.effort], EFFORTS, 'Easy')}</span></p>

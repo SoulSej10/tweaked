@@ -1,13 +1,14 @@
 export type Effort = 'quick' | 'easy' | 'any'
 
 export type Preferences = {
+  country: string // The cuisine id of home (see CUISINES); '' until chosen
   cuisines: string[] // Cuisine ids (see CUISINES)
   kinds: string[] // Kind ids (see KINDS)
   effort: Effort
   avoid: string[] // Avoid ids (see AVOID)
 }
 
-export const EMPTY_PREFS: Preferences = { cuisines: [], kinds: [], effort: 'easy', avoid: [] }
+export const EMPTY_PREFS: Preferences = { country: '', cuisines: [], kinds: [], effort: 'easy', avoid: [] }
 
 /**
  * `areas` are the labels the online recipe source (TheMealDB) uses for that cuisine. It mixes
@@ -79,6 +80,7 @@ export function normalizePrefs(raw: unknown): Preferences {
   const r = (raw && typeof raw === 'object' ? raw : {}) as Partial<Preferences>
   const arr = (v: unknown) => (Array.isArray(v) ? v.filter((x): x is string => typeof x === 'string') : [])
   return {
+    country: typeof r.country === 'string' && cuisineById(r.country) ? r.country : '',
     cuisines: arr(r.cuisines),
     kinds: arr(r.kinds),
     effort: r.effort === 'quick' || r.effort === 'any' ? r.effort : 'easy',
@@ -88,4 +90,9 @@ export function normalizePrefs(raw: unknown): Preferences {
 
 export function toggle(list: string[], id: string): string[] {
   return list.includes(id) ? list.filter((x) => x !== id) : [...list, id]
+}
+
+/** The cuisine of the person's own country. Older accounts never picked one, so use their first favourite cuisine. */
+export function homeCuisine(p: Preferences): string {
+  return p.country || p.cuisines[0] || ''
 }
