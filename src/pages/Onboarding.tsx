@@ -56,7 +56,7 @@ export default function Onboarding() {
             <div className="tiles">
               {CUISINES.map((c) => (
                 <button key={c.id} className={`tile ${draft.country === c.id ? 'on' : ''}`} aria-pressed={draft.country === c.id} onClick={() => setDraft((d) => ({ ...d, country: c.id, cuisines: d.cuisines.includes(c.id) ? d.cuisines : [...d.cuisines, c.id] }))}>
-                  <span className="tile-emoji" aria-hidden>{c.flag}</span>{c.label}
+                  <span className="tile-emoji" aria-hidden>{c.flag}</span>{c.place}
                 </button>
               ))}
             </div>

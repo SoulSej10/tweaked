@@ -98,6 +98,10 @@ export default function Discover() {
         </div>
       </form>
 
+      {!isLink && !q.trim() && (
+        <p className="muted small pad">Have a recipe link? Paste it above to import it, or <Link to="/new">add one from a reel caption</Link>.</p>
+      )}
+
       {isLink && (
         <div className="empty">
           <LinkIcon size={34} className="empty-icon" aria-hidden />

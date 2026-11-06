@@ -7,7 +7,7 @@ import { exportEverything, listRecipes } from '../lib/api'
 import { friendlyAuthError, isEmail, passwordProblem } from '../lib/authErrors'
 import { useAsync, useInstall, useSettings, useTitle } from '../lib/hooks'
 import { formatIngredient, type UnitSystem } from '../lib/parse'
-import { AVOID, CUISINES, EFFORTS, KINDS, homeCuisine } from '../lib/prefs'
+import { AVOID, CUISINES, EFFORTS, KINDS, cuisineById, homeCuisine } from '../lib/prefs'
 import { ACCENTS, VOICE_LANGS, type TextSize } from '../lib/settings'
 import { supabase } from '../lib/supabase'
 import { applyTheme, loadTheme, saveTheme, type Theme } from '../lib/theme'
@@ -64,6 +64,7 @@ export default function Settings() {
   const cooks = mine.reduce((n, r) => n + r.cooked_count, 0)
   const since = user?.created_at ? new Date(user.created_at).toLocaleDateString(undefined, { month: 'long', year: 'numeric' }) : null
   const shownName = name ?? email.split('@')[0]
+  const home = cuisineById(homeCuisine(prefs))
 
   function pick(t: Theme) {
     setTheme(t)
@@ -224,7 +225,7 @@ export default function Settings() {
 
         <h2>My taste</h2>
         <div className="panel">
-          <p><b>Home country</b><br /><span className="muted">{labels([homeCuisine(prefs)], CUISINES, 'Not set')}</span></p>
+          <p><b>Home country</b><br /><span className="muted">{home ? `${home.flag} ${home.place}` : 'Not set'}</span></p>
           <p><b>Cuisines</b><br /><span className="muted">{labels(prefs.cuisines, CUISINES, 'Anything')}</span></p>
           <p><b>Dishes</b><br /><span className="muted">{labels(prefs.kinds, KINDS, 'Anything')}</span></p>
           <p><b>Effort</b><br /><span className="muted">{labels([prefs.effort], EFFORTS, 'Easy')}</span></p>
@@ -295,31 +296,33 @@ export default function Settings() {
             <form className="stack" onSubmit={changePassword}>
               <input type="password" placeholder="New password (8+ characters, letters and numbers)" aria-label="New password" autoComplete="new-password" value={pw.next} onChange={(e) => setPw({ ...pw, next: e.target.value })} />
               <input type="password" placeholder="Type it again" aria-label="Confirm new password" autoComplete="new-password" value={pw.again} onChange={(e) => setPw({ ...pw, again: e.target.value })} />
-              <div className="row"><button className="btn primary" disabled={busy}>Save password</button><button type="button" className="btn ghost" onClick={() => setOpen(null)}>Cancel</button></div>
+              <div className="btn-grid"><button className="btn primary" disabled={busy}>Save password</button><button type="button" className="btn" onClick={() => setOpen(null)}>Cancel</button></div>
             </form>
           ) : open === 'email' ? (
             <form className="stack" onSubmit={changeEmail}>
               <input type="email" placeholder="New email address" aria-label="New email" autoComplete="email" value={newEmail} onChange={(e) => setNewEmail(e.target.value)} />
-              <div className="row"><button className="btn primary" disabled={busy}>Send confirmation</button><button type="button" className="btn ghost" onClick={() => setOpen(null)}>Cancel</button></div>
+              <div className="btn-grid"><button className="btn primary" disabled={busy}>Send confirmation</button><button type="button" className="btn" onClick={() => setOpen(null)}>Cancel</button></div>
             </form>
           ) : (
-            <div className="row wrap">
+            <div className="btn-grid">
               <button className="btn" onClick={() => setOpen('password')}>{providers.includes('Email and password') ? 'Change password' : 'Set a password'}</button>
               <button className="btn" onClick={() => setOpen('email')}>Change email</button>
+              <button className="btn span-all" onClick={signOutEverywhere}><SignOut size={18} aria-hidden /> Sign out of all devices</button>
             </div>
           )}
-          <button className="btn" onClick={signOutEverywhere}><SignOut size={18} aria-hidden /> Sign out of all devices</button>
         </div>
 
         <h2>Your data</h2>
-        <p className="muted small">Your cookbook is yours. Download all of it any time.</p>
-        <div className="row wrap">
-          <button className="btn" onClick={exportJson} disabled={busy}><DownloadSimple size={18} aria-hidden /> Download JSON</button>
-          <button className="btn" onClick={exportMd} disabled={busy}><DownloadSimple size={18} aria-hidden /> Download Markdown</button>
+        <div className="panel">
+          <p className="muted small">Your cookbook is yours. Download all of it any time.</p>
+          <div className="btn-grid">
+            <button className="btn" onClick={exportJson} disabled={busy}><DownloadSimple size={18} aria-hidden /> Download JSON</button>
+            <button className="btn" onClick={exportMd} disabled={busy}><DownloadSimple size={18} aria-hidden /> Download Markdown</button>
+            <button className="btn span-all" onClick={clearOffline}>Clear offline copies</button>
+          </div>
+          {note && <p className="muted small" role="status">{note}</p>}
+          {err && <p className="error" role="alert">{err}</p>}
         </div>
-        <button className="btn" onClick={clearOffline}>Clear offline copies</button>
-        {note && <p className="muted small" role="status">{note}</p>}
-        {err && <p className="error" role="alert">{err}</p>}
 
         <h2>Tips</h2>
         <details className="help"><summary>What does “tweak” mean?</summary><p>Every time you cook, tell Tweaked what you changed (“less soy sauce”). Next time it shows that note first. Bigger changes can be saved as a new version, and the old one is never lost.</p></details>
@@ -335,7 +338,9 @@ export default function Settings() {
         <p className="small"><Link to="/terms">Terms of Use</Link> · <Link to="/privacy">Privacy Policy</Link> · <a href="https://github.com/SoulSej10/tweaked/issues" target="_blank" rel="noreferrer">Report a problem</a></p>
 
         <h2>Account</h2>
-        <button className="btn" onClick={() => supabase.auth.signOut()}><SignOut size={18} aria-hidden /> Sign out</button>
+        <div className="panel">
+          <button className="btn" onClick={() => supabase.auth.signOut()}><SignOut size={18} aria-hidden /> Sign out</button>
+        </div>
 
         <h2 className="danger-title">Danger zone</h2>
         <div className="panel danger-zone">

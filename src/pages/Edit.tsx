@@ -151,10 +151,10 @@ function Form({ full }: { full: RecipeFull | null }) {
         </section>
 
         {!editing && (
-          <details className="fcard">
-            <summary><ClipboardText size={18} aria-hidden /> Paste a caption or recipe text</summary>
-            <p className="muted small">From Facebook, Instagram or TikTok: open the post, press and hold the caption to copy it, then paste it here. We pick out the ingredients, steps, hashtags and the link.</p>
-            <textarea rows={5} placeholder="Paste a reel caption or recipe text" value={caption} onChange={(e) => setCaption(e.target.value)} />
+          <details className="fcard" open>
+            <summary><ClipboardText size={18} aria-hidden /> Import from a link, reel or caption</summary>
+            <p className="muted small">Paste a recipe web page link and Tweaked reads it for you. For a Facebook, Instagram or TikTok reel, copy its caption and paste that (those apps don't let other sites read the post). We pick out the ingredients, steps, hashtags and the link.</p>
+            <textarea rows={5} placeholder="Paste a recipe link, a reel caption or recipe text" value={caption} onChange={(e) => setCaption(e.target.value)} />
             {linkOnly && !readable && <p className="callout-plain">That's just a link. Facebook and Instagram only show recipes to their own apps, so Tweaked can't read the post for you. <a href={pastedLink.url ?? '#'} target="_blank" rel="noreferrer">Open it</a>, copy the caption, and paste that here. We'll keep the link as the source.</p>}
             {readable && <p className="callout-plain">That looks like a web page. Tweaked can read the recipe from it for you.</p>}
             {importErr && <p className="error" role="alert">{importErr}</p>}

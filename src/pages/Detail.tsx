@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { signedUrls } from '../lib/photo'
+import { loadCovers } from '../lib/covers'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { useFeedback } from '../feedback'
 import { deleteRecipe, getRecipe, rollbackTo, setFavorite } from '../lib/api'
@@ -17,7 +18,9 @@ export default function Detail() {
   const { data, error, loading, reload } = useAsync(async () => {
     const full = await getRecipe(id)
     const urls = await signedUrls(full.logs.map((l) => l.photo_path).filter((x): x is string => Boolean(x))).catch(() => ({}))
-    return { ...full, urls: urls as Record<string, string> }
+    // Without a photo of your own, the banner borrows the picture of the dish it came from (same as the lists).
+    const fallback = (await loadCovers([full.recipe]).catch(() => ({}) as Record<string, string>))[full.recipe.id] ?? null
+    return { ...full, urls: urls as Record<string, string>, fallback }
   }, [id])
   const [viewId, setViewId] = useState<string | null>(null)
   const [servings, setServings] = useState<number | null>(null)
@@ -33,7 +36,7 @@ export default function Detail() {
   if (loading) return <main className="page"><p className="muted pad">Loading…</p></main>
   if (error || !data) return <main className="page"><p className="error pad">{error ?? 'Not found'}</p><Link to="/recipes" className="btn">Back</Link></main>
 
-  const { recipe, versions, logs, urls } = data
+  const { recipe, versions, logs, urls, fallback } = data
   const currentId = recipe.current_version_id
   const shown = versions.find((v) => v.id === (viewId ?? currentId)) ?? versions[0]
   const isCurrent = shown?.id === currentId
@@ -42,8 +45,8 @@ export default function Detail() {
   const factor = base && target ? target / base : 1
   const lastTweak = logs.find((l) => l.tweak_note)
   const favorite = fav ?? recipe.favorite
-  // The banner shows your most recent photo of this dish, if you took one.
-  const cover = logs.map((l) => (l.photo_path ? urls[l.photo_path] : null)).find(Boolean) ?? null
+  // The banner shows your most recent photo of this dish, else the picture of the dish it came from.
+  const cover = logs.map((l) => (l.photo_path ? urls[l.photo_path] : null)).find(Boolean) ?? fallback
 
   async function rollback() {
     if (!shown) return
@@ -117,7 +120,7 @@ export default function Detail() {
     <main className="page with-bar">
       <div className={`banner short dthumb t${tileIndex(recipe.title)} no-print`}>
         <span className="demoji" aria-hidden>{dishEmoji(recipe.title, recipe.tags)}</span>
-        {cover && <img src={cover} alt={`${recipe.title}, as you cooked it`} onError={(e) => (e.currentTarget.style.display = 'none')} />}
+        {cover && <img src={cover} alt={recipe.title} referrerPolicy="no-referrer" onError={(e) => (e.currentTarget.style.display = 'none')} />}
         <Link to="/recipes" className="float-back" aria-label="Back to recipes"><ArrowLeft size={20} /></Link>
         <div className="float-actions">
           <button className={`float-btn ${favorite ? 'on' : ''}`} onClick={toggleFavorite} aria-pressed={favorite} aria-label={favorite ? 'Remove from favorites' : 'Add to favorites'}><Heart size={20} weight={favorite ? 'fill' : 'regular'} /></button>

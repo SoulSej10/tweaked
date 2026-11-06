@@ -152,7 +152,7 @@ label.check, .check { flex-direction: row; align-items: center; gap: 10px; font-
 .topbar {
   position: sticky; top: 0; z-index: 5; display: flex; align-items: center; justify-content: space-between; gap: 8px;
   padding: calc(8px + env(safe-area-inset-top)) 16px 6px;
-  background: color-mix(in srgb, var(--bg) 88%, transparent); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+  background: var(--bg);
 }
 .bar { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: calc(10px + env(safe-area-inset-top)) 12px 10px; }
 .eyebrow { margin: 0; font-size: 0.85rem; font-weight: 700; color: var(--muted); }
@@ -659,3 +659,11 @@ a { color: var(--accent); }
 .icon-btn.small { width: 34px; height: 34px; }
 .sheet { max-height: 92dvh; overflow-y: auto; }
 .timer-note { flex-basis: 100%; }
+
+/* Settings: buttons share one grid so pairs sit side by side at equal width and single actions span the row. */
+.btn-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.btn-grid .btn { width: 100%; margin-top: 0; text-align: center; line-height: 1.2; padding-block: 8px; }
+.btn-grid .span-all { grid-column: 1 / -1; }
+@media (max-width: 340px) { .btn-grid { grid-template-columns: minmax(0, 1fr); } }
+.panel .btn-grid { margin-top: 8px; }
+.panel > .btn:only-child { margin-top: 0; width: 100%; }
