@@ -658,3 +658,4 @@ a { color: var(--accent); }
 .share-foot { justify-content: space-between; margin-top: 14px; }
 .icon-btn.small { width: 34px; height: 34px; }
 .sheet { max-height: 92dvh; overflow-y: auto; }
+.timer-note { flex-basis: 100%; }

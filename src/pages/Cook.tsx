@@ -2,19 +2,47 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { getRecipe, logCook } from '../lib/api'
 import { useAsync, useSettings, useTitle, useWakeLock } from '../lib/hooks'
+import { cancelRing, enablePush, pushState, scheduleRing, startRinging, stopRinging, unlockSound, type PushState } from '../lib/push'
 import { formatDuration, formatIngredient } from '../lib/parse'
 import { uploadDishPhoto } from '../lib/photo'
 import { useDictation } from '../lib/speech'
 import { ArrowLeft, ArrowRight, Camera, Microphone, X } from '@phosphor-icons/react'
 
-/** Counts down against the clock, so it stays right if the phone sleeps or the tab is in the background. */
-function Timer({ seconds, vibrate }: { seconds: number; vibrate: boolean }) {
-  const [left, setLeft] = useState(seconds) // seconds left while paused
-  const [endAt, setEndAt] = useState<number | null>(null) // when it will finish, while running
+type Saved = { endAt: number | null; left: number; ringId: string | null }
+
+/**
+ * Counts down against the clock, so it stays right if the phone sleeps or the tab is in the background. It is
+ * remembered on this device (reloads do not lose it) and also booked on the server, which sends a push
+ * notification to ring the phone even when the app is closed.
+ */
+function Timer({ recipeId, index, seconds, label, vibrate }: { recipeId: string; index: number; seconds: number; label: string; vibrate: boolean }) {
+  const storeKey = `tweaked.timer.${recipeId}.${index}`
+  const [saved, setSaved] = useState<Saved>(() => {
+    try {
+      const v = JSON.parse(localStorage.getItem(storeKey) ?? 'null') as Saved | null
+      if (v && typeof v.left === 'number') return v
+    } catch {
+      /* start fresh */
+    }
+    return { endAt: null, left: seconds, ringId: null }
+  })
+  const { endAt, left, ringId } = saved
   const [now, setNow] = useState(() => Date.now())
+  const [ringing, setRinging] = useState(false)
+  const [alerts, setAlerts] = useState<PushState>(() => pushState())
   const running = endAt !== null
   const remaining = running ? Math.max(0, Math.ceil((endAt - now) / 1000)) : left
   const finished = !running && left === 0
+
+  function update(next: Saved) {
+    setSaved(next)
+    try {
+      if (next.endAt === null && next.left === seconds) localStorage.removeItem(storeKey)
+      else localStorage.setItem(storeKey, JSON.stringify(next))
+    } catch {
+      /* private mode: still works until reload */
+    }
+  }
 
   useEffect(() => {
     if (endAt === null) return
@@ -22,41 +50,70 @@ function Timer({ seconds, vibrate }: { seconds: number; vibrate: boolean }) {
       const t = Date.now()
       setNow(t)
       if (t >= endAt) {
-        setLeft(0)
-        setEndAt(null)
-        if (vibrate && 'vibrate' in navigator) navigator.vibrate?.([300, 150, 300])
-        // If the screen is off or the tab is hidden, a notification is the only way to get your attention.
-        if (document.hidden && 'Notification' in window && Notification.permission === 'granted') {
-          void navigator.serviceWorker?.ready
-            .then((r) => r.showNotification('Timer done', { body: 'Time to check your dish.', tag: 'tweaked-timer' }))
-            .catch(() => new Notification('Timer done'))
-        }
+        update({ endAt: null, left: 0, ringId })
+        // Ringing in the open app; if the app is hidden the server push is what reaches you.
+        if (!document.hidden) {
+          startRinging(vibrate)
+          setRinging(true)
+        } else if (vibrate && 'vibrate' in navigator) navigator.vibrate?.([300, 150, 300])
       }
     }
+    tick()
     const t = setInterval(tick, 250)
     document.addEventListener('visibilitychange', tick)
     return () => {
       clearInterval(t)
       document.removeEventListener('visibilitychange', tick)
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [endAt, vibrate])
 
-  function toggle() {
+  useEffect(() => () => stopRinging(), [])
+
+  async function toggle() {
+    unlockSound()
     if (running) {
-      setLeft(remaining)
-      setEndAt(null)
+      void cancelRing(ringId)
+      update({ endAt: null, left: remaining, ringId: null })
       return
     }
+    const end = Date.now() + left * 1000
     setNow(Date.now())
-    setEndAt(Date.now() + left * 1000)
-    if ('Notification' in window && Notification.permission === 'default') void Notification.requestPermission()
+    update({ endAt: end, left, ringId: null })
+    // Ask for notifications on the first start (it must come from this tap), then book the phone ring.
+    const state = await enablePush()
+    setAlerts(state)
+    const id = await scheduleRing(recipeId, label, end)
+    setSaved((cur) => {
+      const next = cur.endAt === end ? { ...cur, ringId: id } : cur
+      try {
+        localStorage.setItem(storeKey, JSON.stringify(next))
+      } catch {
+        /* fine */
+      }
+      if (cur.endAt !== end) void cancelRing(id)
+      return next
+    })
+  }
+
+  function reset() {
+    stopRinging()
+    setRinging(false)
+    void cancelRing(ringId)
+    update({ endAt: null, left: seconds, ringId: null })
   }
 
   return (
     <div className={`timer ${finished ? 'done' : ''}`}>
       <span>{finished ? 'Time!' : formatDuration(remaining)}</span>
-      <button className="btn" onClick={toggle} disabled={finished}>{running ? 'Pause' : 'Start timer'}</button>
-      <button className="btn ghost" onClick={() => { setLeft(seconds); setEndAt(null) }}>Reset</button>
+      {ringing ? (
+        <button className="btn primary" onClick={() => { stopRinging(); setRinging(false) }}>Stop ringing</button>
+      ) : (
+        <button className="btn" onClick={toggle} disabled={finished}>{running ? 'Pause' : 'Start timer'}</button>
+      )}
+      <button className="btn ghost" onClick={reset}>Reset</button>
+      {running && alerts === 'blocked' && <small className="muted timer-note">Notifications are blocked, so it will only ring while this screen is open.</small>}
+      {running && alerts === 'unsupported' && <small className="muted timer-note">This browser cannot ring in the background. Add Tweaked to your home screen for that.</small>}
     </div>
   )
 }
@@ -198,7 +255,7 @@ export default function Cook() {
       ) : (
         <section className="step">
           <p className="step-text">{step.text}</p>
-          {step.timer_seconds && <Timer key={i} seconds={step.timer_seconds} vibrate={settings.vibrate} />}
+          {step.timer_seconds && <Timer key={i} recipeId={id} index={i} seconds={step.timer_seconds} label={`${recipe.title}, step ${i + 1}`} vibrate={settings.vibrate} />}
         </section>
       )}
 

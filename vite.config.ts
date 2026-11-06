@@ -36,6 +36,8 @@ export default defineConfig({
         ],
       },
       workbox: {
+        // Push and notification-click handlers for the step timers.
+        importScripts: ['push-sw.js'],
         navigateFallback: '/index.html',
         navigateFallbackDenylist: [/^\/api\//],
         // Fonts and icons are part of the app shell; without these the app falls back to system fonts offline.
