@@ -38,7 +38,7 @@ function PasswordInput(props: { value: string; onChange: (v: string) => void; pl
   )
 }
 
-export default function Login({ note }: { note?: string } = {}) {
+export default function Login({ note, onBack }: { note?: string; onBack?: () => void } = {}) {
   useTitle('Sign in')
   const [mode, setMode] = useState<Mode>('in')
   const [email, setEmail] = useState('')
@@ -221,6 +221,7 @@ export default function Login({ note }: { note?: string } = {}) {
         </>
       )}
 
+      {onBack && <button className="link" onClick={onBack}>← Back to the recipe</button>}
       <p className="legal-links">
         By continuing you agree to the <Link to="/terms">Terms</Link> and <Link to="/privacy">Privacy Policy</Link>.
       </p>

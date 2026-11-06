@@ -105,7 +105,7 @@ export default function SharedRecipe() {
   }, [status])
 
   if (signup && !session) {
-    return <Login note="Create a free account (or sign in) to keep this recipe. It will be waiting for you." />
+    return <Login note="Create a free account (or sign in) to keep this recipe. It will be waiting for you." onBack={() => setSignup(false)} />
   }
 
   const header = (
