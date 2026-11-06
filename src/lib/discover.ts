@@ -771,16 +771,30 @@ export async function buildFeed(prefs: Preferences, history: History, seed: numb
 
   const maxC = Math.max(1, ...Object.values(history.cuisines))
   const maxK = Math.max(1, ...Object.values(history.categories))
-  const score = (d: Dish) =>
-    (d.cuisineId && prefs.cuisines.includes(d.cuisineId) ? 3 : 0) +
-    (prefCats.has(d.category.toLowerCase()) ? 2 : 0) +
+
+  // What the person chose in the sign-up quiz is the main thing: a dish "matches" when it is one of their
+  // cuisines or one of their kinds of dish. (If they skipped the quiz, everything counts.)
+  const hasQuiz = prefs.cuisines.length > 0 || prefs.kinds.length > 0
+  const cuisineHit = (d: Dish) => Boolean(d.cuisineId && prefs.cuisines.includes(d.cuisineId))
+  const kindHit = (d: Dish) => prefCats.has(d.category.toLowerCase())
+  const quizMatch = (d: Dish) => !hasQuiz || cuisineHit(d) || kindHit(d)
+
+  // How much we want a dish to turn up. This only sets the odds: the order itself is a weighted lucky draw,
+  // so the home screen is different every time it is opened but leans hard towards what the person chose.
+  const weight = (d: Dish) =>
+    1 +
+    (cuisineHit(d) ? 4 : 0) +
+    (kindHit(d) ? 3 : 0) +
     (d.cuisineId ? (history.cuisines[d.cuisineId] ?? 0) / maxC : 0) * 1.5 +
     ((history.categories[d.category.toLowerCase()] ?? 0) / maxK) * 1.5 +
-    (d.ingredients.length <= 6 ? 0.5 : 0) +
-    (d.thumb ? 0.4 : 0) +
-    rnd() * 1.5
+    (d.ingredients.length <= 6 ? 0.3 : 0) +
+    (d.thumb ? 0.7 : 0)
 
-  const scored = [...ok].sort((a, b) => score(b) - score(a))
+  // Weighted sampling without replacement (Efraimidis-Spirakis): a smaller key comes earlier, and a heavier
+  // weight makes a small key likelier. Keys are computed once so the sort is consistent.
+  const draw = new Map<string, number>()
+  for (const d of ok) draw.set(d.id, -Math.log(Math.max(rnd(), 1e-9)) / weight(d))
+  const scored = [...ok].sort((a, b) => (draw.get(a.id) ?? 0) - (draw.get(b.id) ?? 0))
   const used = new Set<string>()
   const take = (list: Dish[], n: number) => {
     const fresh = list.filter((d) => !used.has(d.id)).slice(0, n)
@@ -794,7 +808,15 @@ export async function buildFeed(prefs: Preferences, history: History, seed: numb
   }
   const solid = scored.filter((d) => d.category !== 'Drink')
 
-  push('picked', 'Picked for you', 'Based on your taste and what you cook', take(solid, 10))
+  // "Picked for you" comes only from the quiz choices whenever there are enough of them, so the first card
+  // (Tonight's pick) is always something they said they like. Other dishes only fill in when the quiz is thin.
+  const matches = solid.filter(quizMatch)
+  const pickedPool = matches.length >= 6 ? matches : [...matches, ...solid.filter((d) => !quizMatch(d))]
+  const picked = take(pickedPool, 10)
+  // Lead with a dish that has a photo, if there is one among them.
+  const lead = picked.findIndex((d) => d.thumb)
+  if (lead > 0) [picked[0], picked[lead]] = [picked[lead], picked[0]]
+  push('picked', 'Picked for you', hasQuiz ? 'Matched to the tastes you chose' : 'Based on what you cook', picked)
   push('few', 'Short shopping list', 'Six ingredients or fewer', take(solid.filter((d) => d.ingredients.length <= 6), 10))
   push('quick', 'Quick to cook', 'Ready in 30 minutes or less', take(solid.filter((d) => d.minutes !== null && d.minutes <= 30), 8))
   for (const c of cuisines.slice(0, 2)) {

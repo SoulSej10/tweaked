@@ -7,6 +7,7 @@ import { listRecentCooks, listRecipes } from '../lib/api'
 import { buildFeed, thumbUrl, type Dish } from '../lib/discover'
 import { dishEmoji, tileIndex } from '../lib/emoji'
 import { historyFrom } from '../lib/history'
+import { OPEN_SEED } from '../lib/openSeed'
 import { useAsync } from '../lib/hooks'
 import { useShopping } from '../lib/shopping'
 import { usePrefs } from '../prefs'
@@ -47,7 +48,7 @@ export default function Home() {
   const key = JSON.stringify([prefs, history.cuisines, history.categories, [...history.savedIds].sort(), bump])
   const feed = useAsync(async () => {
     if (!recipes.data) return null
-    return buildFeed(prefs, history, Math.floor(now / 86400000) + bump * 7919)
+    return buildFeed(prefs, history, OPEN_SEED + bump * 7919)
   }, [key, Boolean(recipes.data)])
 
   const mine = recipes.data ?? []
