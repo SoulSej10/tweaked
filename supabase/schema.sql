@@ -231,3 +231,9 @@ grant select (id, recipe_id, kind, created_at, expires_at, claimed_at, views, re
 grant update (revoked_at) on public.recipe_shares to authenticated;
 -- Functions create_share, share_state, peek_share and open_share: see the 'recipe_sharing' migration in the Supabase project.
 -- kind 'once': the first browser to open it claims it (claim_hash); only that browser can reopen it. kind 'open': anyone, until it expires.
+
+-- ---------- step-timer push (added 2026-11-06) ----------
+-- push_subscriptions: one row per phone/browser that allowed notifications. cook_timers: a timer booked to ring.
+-- push_config holds the push keys and cron secret (server only: no policies, no grants). The pg_cron job
+-- 'fire-cook-timers' calls the fire-timers edge function every 10 seconds, only when a timer is about to ring.
+-- Full SQL: the 'cook_timer_push' migration in the Supabase project; function source: supabase/functions/fire-timers.
