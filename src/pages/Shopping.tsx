@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { Shell } from '../components/Shell'
 import { useFeedback } from '../feedback'
+import { AISLES, aisleOf } from '../lib/shopText'
 import { addItems, clearAll, clearDone, removeItem, toggleItem, useShopping } from '../lib/shopping'
 import { Check, ShareNetwork, ShoppingCart, X } from '@phosphor-icons/react'
 
@@ -21,7 +22,10 @@ export default function Shopping() {
   }
 
   async function share() {
-    const body = todo.map((i) => `• ${i.text}`).join('\n')
+    const body = AISLES.flatMap((a) => {
+      const rows = todo.filter((i) => aisleOf(i.text) === a)
+      return rows.length ? [`${a}`, ...rows.map((i) => `• ${i.text}`), ''] : []
+    }).join('\n').trim()
     try {
       if (navigator.share) await navigator.share({ title: 'Shopping list', text: body })
       else {
@@ -56,16 +60,23 @@ export default function Shopping() {
         </div>
       )}
 
-      {todo.length > 0 && (
-        <ul className="shop">
-          {todo.map((i) => (
-            <li key={i.id}>
-              <label className="check"><input type="checkbox" checked={false} onChange={() => toggleItem(i.id)} /><span>{i.text}{i.from && <small>{i.from}</small>}</span></label>
-              <button className="x" onClick={() => removeItem(i.id)} aria-label={`Remove ${i.text}`}><X size={18} aria-hidden /></button>
-            </li>
-          ))}
-        </ul>
-      )}
+      {AISLES.map((aisle) => {
+        const rows = todo.filter((i) => aisleOf(i.text) === aisle)
+        if (rows.length === 0) return null
+        return (
+          <section key={aisle}>
+            <h2 className="aisle">{aisle}</h2>
+            <ul className="shop">
+              {rows.map((i) => (
+                <li key={i.id}>
+                  <label className="check"><input type="checkbox" checked={false} onChange={() => toggleItem(i.id)} /><span>{i.text}{i.from && <small>{i.from}</small>}</span></label>
+                  <button className="x" onClick={() => removeItem(i.id)} aria-label={`Remove ${i.text}`}><X size={18} aria-hidden /></button>
+                </li>
+              ))}
+            </ul>
+          </section>
+        )
+      })}
 
       {done.length > 0 && (
         <>

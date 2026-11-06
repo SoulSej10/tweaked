@@ -111,6 +111,15 @@ export async function setFavorite(id: string, favorite: boolean): Promise<void> 
   check(await supabase.from('recipes').update({ favorite }).eq('id', id).select('id').single())
 }
 
+export async function setRating(id: string, rating: number | null): Promise<void> {
+  check(await supabase.from('recipes').update({ rating }).eq('id', id).select('id').single())
+}
+
+/** Set (or, with null, remove) the cover photo you picked for a recipe. */
+export async function setRecipePhoto(id: string, photoPath: string | null): Promise<void> {
+  check(await supabase.from('recipes').update({ photo_path: photoPath }).eq('id', id).select('id').single())
+}
+
 export async function deleteRecipe(id: string): Promise<void> {
   check(await supabase.from('recipes').delete().eq('id', id).select('id'))
 }

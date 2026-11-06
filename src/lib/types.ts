@@ -23,6 +23,10 @@ export type Recipe = {
   tags: string[]
   bring_from_home: boolean
   favorite: boolean
+  /** 1 to 5 stars, or null when you have not rated it. */
+  rating: number | null
+  /** Cover photo you chose (private dish-photos bucket). */
+  photo_path: string | null
   current_version_id: string | null
   cooked_count: number
   last_cooked_at: string | null

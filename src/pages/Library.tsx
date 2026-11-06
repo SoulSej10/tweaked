@@ -9,8 +9,8 @@ import type { RecipeCard } from '../lib/types'
 import { BookOpen, DiceFive, Heart, MagnifyingGlass, Package } from '@phosphor-icons/react'
 import { Picker } from '../components/Picker'
 
-type Filter = 'all' | 'fav' | 'recent' | 'never' | 'home'
-type Sort = 'updated' | 'az' | 'most' | 'cooked'
+type Filter = 'all' | 'fav' | 'top' | 'recent' | 'never' | 'home'
+type Sort = 'updated' | 'az' | 'most' | 'cooked' | 'rated'
 const WEEK = 7 * 24 * 3600 * 1000
 
 function ago(iso: string | null): string {
@@ -30,13 +30,14 @@ export default function Library() {
   const nav = useNavigate()
   const [now] = useState(() => Date.now())
 
-  const covers = useAsync(async () => (data ? await loadCovers(data) : {}), [data?.map((r) => r.id + r.source_url + r.title).join()])
+  const covers = useAsync(async () => (data ? await loadCovers(data) : {}), [data?.map((r) => r.id + r.source_url + r.title + r.photo_path).join()])
   const tags = useMemo(() => [...new Set((data ?? []).flatMap((r) => r.tags))].sort(), [data])
 
   const shown = useMemo(() => {
     const term = q.trim().toLowerCase()
     const list = (data ?? []).filter((r: RecipeCard) => {
       if (filter === 'fav' && !r.favorite) return false
+      if (filter === 'top' && !(r.rating && r.rating >= 4)) return false
       if (filter === 'recent' && !(r.last_cooked_at && now - new Date(r.last_cooked_at).getTime() < WEEK * 2)) return false
       if (filter === 'never' && r.cooked_count > 0) return false
       if (filter === 'home' && !r.bring_from_home) return false
@@ -49,6 +50,7 @@ export default function Library() {
       az: (a, b) => a.title.localeCompare(b.title),
       most: (a, b) => b.cooked_count - a.cooked_count,
       cooked: (a, b) => (b.last_cooked_at ?? '').localeCompare(a.last_cooked_at ?? ''),
+      rated: (a, b) => (b.rating ?? 0) - (a.rating ?? 0),
     }
     return [...list].sort(by[sort])
   }, [data, q, filter, tag, now, sort])
@@ -89,6 +91,7 @@ export default function Library() {
               { id: 'updated', label: 'Recently changed' },
               { id: 'cooked', label: 'Recently cooked' },
               { id: 'most', label: 'Most cooked' },
+              { id: 'rated', label: 'Highest rated' },
               { id: 'az', label: 'A to Z' },
             ]}
           />
@@ -97,7 +100,7 @@ export default function Library() {
       </div>
 
       <div className="chips" role="group" aria-label="Filters">
-        {([['all', 'All'], ['fav', 'Favorites'], ['recent', 'Cooked recently'], ['never', 'Never cooked'], ['home', 'Bring from home']] as const).map(([k, label]) => (
+        {([['all', 'All'], ['fav', 'Favorites'], ['top', '4 stars and up'], ['recent', 'Cooked recently'], ['never', 'Never cooked'], ['home', 'Bring from home']] as const).map(([k, label]) => (
           <button key={k} className={`chip ${filter === k ? 'on' : ''}`} onClick={() => setFilter(k)}>{k === 'fav' && <Heart size={14} weight="fill" aria-hidden />}{label}</button>
         ))}
         {tags.map((t) => (
@@ -124,7 +127,7 @@ export default function Library() {
               <RecipeThumb title={r.title} tags={r.tags} src={covers.data?.[r.id]} />
               <span className="rbody">
                 <b>{r.favorite && <Heart size={13} weight="fill" className="heart" aria-label="Favorite" />} {r.title}</b>
-                <span className="meta">{ago(r.last_cooked_at)}{r.cooked_count > 0 ? ` · ${r.cooked_count}×` : ''}</span>
+                <span className="meta">{r.rating ? <span className="rate-pill">★ {r.rating} · </span> : null}{ago(r.last_cooked_at)}{r.cooked_count > 0 ? ` · ${r.cooked_count}×` : ''}</span>
                 {r.lastTweak && <span className="tweak">Last time: {r.lastTweak}</span>}
                 {(r.tags.length > 0 || r.bring_from_home) && (
                   <span className="tags">

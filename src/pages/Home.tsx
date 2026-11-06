@@ -40,7 +40,7 @@ export default function Home() {
   const { session } = useAuth()
   const { prefs, name } = usePrefs()
   const recipes = useAsync(listRecipes, [])
-  const covers = useAsync(async () => (recipes.data ? await loadCovers(recipes.data) : {}), [recipes.data?.map((r) => r.id + r.source_url + r.title).join()])
+  const covers = useAsync(async () => (recipes.data ? await loadCovers(recipes.data) : {}), [recipes.data?.map((r) => r.id + r.source_url + r.title + r.photo_path).join()])
   const cooks = useAsync(() => listRecentCooks(60), [])
   const shopping = useShopping().filter((i) => !i.done).length
   const nav = useNavigate()

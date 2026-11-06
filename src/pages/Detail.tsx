@@ -1,14 +1,14 @@
-import { useState } from 'react'
-import { signedUrls } from '../lib/photo'
+import { useRef, useState } from 'react'
+import { signedUrls, uploadDishPhoto } from '../lib/photo'
 import { loadCovers } from '../lib/covers'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { useFeedback } from '../feedback'
-import { deleteRecipe, getRecipe, rollbackTo, setFavorite } from '../lib/api'
+import { deleteRecipe, getRecipe, rollbackTo, setFavorite, setRating, setRecipePhoto } from '../lib/api'
 import { dishEmoji, tileIndex } from '../lib/emoji'
 import { useAsync, useSettings, useTitle } from '../lib/hooks'
 import { addItems } from '../lib/shopping'
 import { convertIngredient, formatIngredient, scaleAmount, type UnitSystem } from '../lib/parse'
-import { ArrowLeft, Heart, Package, ShareNetwork, ShoppingCart } from '@phosphor-icons/react'
+import { ArrowLeft, Camera, Heart, Package, ShareNetwork, ShoppingCart, Star } from '@phosphor-icons/react'
 import { Picker } from '../components/Picker'
 import { ShareSheet } from '../components/ShareSheet'
 
@@ -30,6 +30,9 @@ export default function Detail() {
   const [added, setAdded] = useState<number | null>(null)
   const [fav, setFav] = useState<boolean | null>(null)
   const [shareOpen, setShareOpen] = useState(false)
+  const [stars, setStars] = useState<number | null | undefined>(undefined)
+  const [uploading, setUploading] = useState(false)
+  const fileRef = useRef<HTMLInputElement>(null)
   const { toast, confirm } = useFeedback()
   useTitle(data?.recipe.title)
 
@@ -46,7 +49,36 @@ export default function Detail() {
   const lastTweak = logs.find((l) => l.tweak_note)
   const favorite = fav ?? recipe.favorite
   // The banner shows your most recent photo of this dish, else the picture of the dish it came from.
-  const cover = logs.map((l) => (l.photo_path ? urls[l.photo_path] : null)).find(Boolean) ?? fallback
+  const cover = recipe.photo_path ? fallback : logs.map((l) => (l.photo_path ? urls[l.photo_path] : null)).find(Boolean) ?? fallback
+  const rating = stars === undefined ? recipe.rating : stars
+
+  async function rate(n: number) {
+    const next = rating === n ? null : n // tapping your current rating clears it
+    const before = stars
+    setStars(next)
+    try {
+      await setRating(recipe.id, next)
+    } catch (e) {
+      setStars(before)
+      toast((e as Error).message, 'error')
+    }
+  }
+
+  async function pickCover(file: File | undefined) {
+    if (!file) return
+    setUploading(true)
+    try {
+      const path = await uploadDishPhoto(file, recipe.id)
+      await setRecipePhoto(recipe.id, path)
+      toast('Cover photo updated')
+      reload()
+    } catch (e) {
+      toast((e as Error).message, 'error')
+    } finally {
+      setUploading(false)
+      if (fileRef.current) fileRef.current.value = ''
+    }
+  }
 
   async function rollback() {
     if (!shown) return
@@ -124,12 +156,21 @@ export default function Detail() {
         <Link to="/recipes" className="float-back" aria-label="Back to recipes"><ArrowLeft size={20} /></Link>
         <div className="float-actions">
           <button className={`float-btn ${favorite ? 'on' : ''}`} onClick={toggleFavorite} aria-pressed={favorite} aria-label={favorite ? 'Remove from favorites' : 'Add to favorites'}><Heart size={20} weight={favorite ? 'fill' : 'regular'} /></button>
+          <button className="float-btn" onClick={() => fileRef.current?.click()} disabled={uploading} aria-label="Change cover photo"><Camera size={20} /></button>
           <button className="float-btn" onClick={() => setShareOpen(true)} aria-label="Share this recipe"><ShareNetwork size={20} /></button>
+          <input ref={fileRef} type="file" accept="image/*" hidden onChange={(e) => void pickCover(e.target.files?.[0])} />
         </div>
       </div>
 
       <section className="pad">
         <h1 className="title">{recipe.title}</h1>
+        <div className="stars no-print" role="group" aria-label="Your rating">
+          {[1, 2, 3, 4, 5].map((n) => (
+            <button key={n} type="button" onClick={() => void rate(n)} aria-label={`${n} star${n > 1 ? 's' : ''}`} aria-pressed={(rating ?? 0) >= n}>
+              <Star size={22} weight={(rating ?? 0) >= n ? 'fill' : 'regular'} />
+            </button>
+          ))}
+        </div>
         <p className="chips-inline">
           <span className="pill">{recipe.cooked_count > 0 ? `Cooked ${recipe.cooked_count}×` : 'Not cooked yet'}</span>
           {recipe.bring_from_home && <span className="pill alt with-icon"><Package size={13} aria-hidden /> packed food</span>}

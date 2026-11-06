@@ -237,3 +237,24 @@ grant update (revoked_at) on public.recipe_shares to authenticated;
 -- push_config holds the push keys and cron secret (server only: no policies, no grants). The pg_cron job
 -- 'fire-cook-timers' calls the fire-timers edge function every 10 seconds, only when a timer is about to ring.
 -- Full SQL: the 'cook_timer_push' migration in the Supabase project; function source: supabase/functions/fire-timers.
+
+-- ---------------------------------------------------------------------------
+-- Synced shopping list, star rating and chosen cover photo (migration shopping_sync_rating_photo)
+-- ---------------------------------------------------------------------------
+create table public.shopping_items (
+  id uuid primary key,
+  user_id uuid not null default auth.uid() references auth.users (id) on delete cascade,
+  text text not null check (char_length(text) between 1 and 300),
+  done boolean not null default false,
+  from_label text check (from_label is null or char_length(from_label) <= 200),
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+create index shopping_items_user_idx on public.shopping_items (user_id);
+alter table public.shopping_items enable row level security;
+create policy "own shopping items" on public.shopping_items for all to authenticated
+  using (user_id = (select auth.uid())) with check (user_id = (select auth.uid()));
+
+alter table public.recipes
+  add column rating smallint check (rating is null or rating between 1 and 5),
+  add column photo_path text check (photo_path is null or char_length(photo_path) <= 300);

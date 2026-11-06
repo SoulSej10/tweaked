@@ -379,7 +379,12 @@ summary { cursor: pointer; font-weight: 700; min-height: 28px; }
 .shop .check span { display: flex; flex-direction: column; }
 .shop small { color: var(--muted); font-weight: 500; font-size: 0.75rem; }
 .shop.done .check span { text-decoration: line-through; color: var(--muted); }
-.shop .x { width: 40px; height: 40px; border: 0; background: none; color: var(--muted); font-size: 1.5rem; cursor: pointer; border-radius: 50%; }
+.aisle { margin: 14px 16px 6px; font-size: 0.8rem; letter-spacing: 0.04em; text-transform: uppercase; color: var(--muted); }
+.stars { display: flex; gap: 2px; margin: 4px 0 8px -4px; }
+.stars button { width: 36px; height: 36px; border: 0; background: none; color: var(--muted); cursor: pointer; display: grid; place-items: center; border-radius: 50%; }
+.stars button[aria-pressed='true'] { color: #e0a21b; }
+.rate-pill { color: #b9800a; font-weight: 700; }
+.shop .x {width: 40px; height: 40px; border: 0; background: none; color: var(--muted); font-size: 1.5rem; cursor: pointer; border-radius: 50%; }
 .quick { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; padding: 4px 16px 6px; }
 .qa { position: relative; display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 9px 4px 8px; border-radius: 16px; background: var(--surface); border: 1px solid var(--line); color: var(--ink); text-decoration: none; font: inherit; font-size: 0.72rem; font-weight: 700; text-align: center; cursor: pointer; line-height: 1.2; }
 .qa:active { transform: scale(0.96); }

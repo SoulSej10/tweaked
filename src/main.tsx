@@ -6,6 +6,9 @@ import './index.css'
 import App from './App.tsx'
 import { applyTheme, loadTheme } from './lib/theme.ts'
 import { applyAccent, applyTextSize, loadSettings } from './lib/settings.ts'
+import { startShoppingSync } from './lib/shopping.ts'
+
+startShoppingSync()
 
 applyTheme(loadTheme())
 applyTextSize(loadSettings().textSize)
