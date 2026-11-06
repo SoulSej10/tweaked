@@ -808,11 +808,22 @@ export async function buildFeed(prefs: Preferences, history: History, seed: numb
   }
   const solid = scored.filter((d) => d.category !== 'Drink')
 
-  // "Picked for you" comes only from the quiz choices whenever there are enough of them, so the first card
-  // (Tonight's pick) is always something they said they like. Other dishes only fill in when the quiz is thin.
-  const matches = solid.filter(quizMatch)
-  const pickedPool = matches.length >= 6 ? matches : [...matches, ...solid.filter((d) => !quizMatch(d))]
-  const picked = take(pickedPool, 10)
+  // "Picked for you" is built from the sign-up quiz: about half from the cuisines the person chose, the rest from
+  // the kinds of dish they chose, each drawn at random. So the first card (Tonight's pick) is always something they
+  // said they like, and their favourite cuisines turn up often even though the kinds cover far more dishes.
+  // Other dishes only fill in when the quiz alone cannot make a full list.
+  const fromCuisine = prefs.cuisines.length ? solid.filter(cuisineHit) : []
+  const fromKind = solid.filter((d) => quizMatch(d) && !(prefs.cuisines.length && cuisineHit(d)))
+  const picked: Dish[] = []
+  while (picked.length < 10 && (fromCuisine.length > 0 || fromKind.length > 0)) {
+    const useCuisine = fromCuisine.length > 0 && (fromKind.length === 0 || rnd() < 0.55)
+    const d = (useCuisine ? fromCuisine : fromKind).shift()
+    if (d && !used.has(d.id)) {
+      used.add(d.id)
+      picked.push(d)
+    }
+  }
+  if (picked.length < 6) picked.push(...take(solid.filter((d) => !quizMatch(d)), 6 - picked.length))
   // Lead with a dish that has a photo, if there is one among them.
   const lead = picked.findIndex((d) => d.thumb)
   if (lead > 0) [picked[0], picked[lead]] = [picked[lead], picked[0]]

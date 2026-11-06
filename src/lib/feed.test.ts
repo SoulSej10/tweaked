@@ -37,6 +37,22 @@ describe('home feed: random every opening, bound to the sign-up quiz', () => {
     }
   })
 
+  it('leans on the cuisines they chose without losing the variety', async () => {
+    let heroFromCuisine = 0
+    let withCuisine = 0
+    const runs = 60
+    for (let i = 1; i <= runs; i++) {
+      const picked = (await buildFeed(prefs, hist, i * 15485863)).find((s) => s.id === 'picked')!
+      const inCuisine = picked.dishes.filter((d) => d.cuisineId && prefs.cuisines.includes(d.cuisineId)).length
+      if (inCuisine >= 3) withCuisine++
+      if (picked.dishes[0].cuisineId && prefs.cuisines.includes(picked.dishes[0].cuisineId)) heroFromCuisine++
+    }
+    // roughly half the opening picks come from their cuisines, never all of them and never almost none
+    expect(heroFromCuisine / runs).toBeGreaterThan(0.3)
+    expect(heroFromCuisine / runs).toBeLessThan(0.9)
+    expect(withCuisine / runs).toBeGreaterThan(0.9)
+  })
+
   it('keeps hiding what the person asked to skip', async () => {
     const feed = await buildFeed(prefs, hist, 4242)
     const text = feed.flatMap((s) => s.dishes).map((d) => `${d.name} ${d.ingredients.map((x) => x.name).join(' ')}`.toLowerCase()).join(' ')
