@@ -221,7 +221,7 @@ label.check, .check { flex-direction: row; align-items: center; gap: 10px; font-
 @media (min-width: 560px) { .grid2c { grid-template-columns: repeat(3, 1fr); } }
 
 .mini { flex: none; width: 138px; display: flex; flex-direction: column; gap: 2px; padding: 10px; border-radius: var(--radius); background: var(--surface); border: 1px solid var(--line); text-decoration: none; color: inherit; box-shadow: var(--shadow); }
-.mini-tile { width: 52px; height: 52px; border-radius: 16px; display: grid; place-items: center; font-size: 1.7rem; margin-bottom: 6px; }
+.mini-tile { position: relative; overflow: hidden; width: 52px; height: 52px; border-radius: 16px; display: grid; place-items: center; font-size: 1.7rem; margin-bottom: 6px; }
 .mini b { font-family: var(--display); font-size: 0.98rem; line-height: 1.2; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
 .mini small { color: var(--muted); font-size: 0.75rem; font-weight: 600; }
 
@@ -258,7 +258,8 @@ label.check, .check { flex-direction: row; align-items: center; gap: 10px; font-
 .cards { list-style: none; margin: 0; padding: 4px 16px 0; display: grid; gap: 8px; }
 .rcard { display: flex; gap: 12px; padding: 10px; background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); text-decoration: none; color: inherit; box-shadow: var(--shadow); transition: transform 0.15s; }
 .rcard:active { transform: scale(0.98); }
-.rtile { flex: none; width: 54px; height: 54px; border-radius: 16px; display: grid; place-items: center; font-size: 1.7rem; }
+.rtile { flex: none; width: 64px; height: 64px; border-radius: 16px; display: grid; place-items: center; font-size: 1.7rem; position: relative; overflow: hidden; }
+.rtile img, .mini-tile img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
 .rbody { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
 .rbody b { font-family: var(--display); font-size: 1rem; line-height: 1.2; }
 .meta { color: var(--muted); font-size: 0.875rem; font-weight: 600; }

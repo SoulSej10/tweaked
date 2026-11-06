@@ -2,7 +2,8 @@ import { useMemo, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { Shell } from '../components/Shell'
 import { listRecipes } from '../lib/api'
-import { dishEmoji, tileIndex } from '../lib/emoji'
+import { RecipeThumb } from '../components/RecipeThumb'
+import { loadCovers } from '../lib/covers'
 import { useAsync } from '../lib/hooks'
 import type { RecipeCard } from '../lib/types'
 import { BookOpen, DiceFive, Heart, MagnifyingGlass, Package } from '@phosphor-icons/react'
@@ -29,6 +30,7 @@ export default function Library() {
   const nav = useNavigate()
   const [now] = useState(() => Date.now())
 
+  const covers = useAsync(async () => (data ? await loadCovers(data) : {}), [data?.map((r) => r.id + r.source_url + r.title).join()])
   const tags = useMemo(() => [...new Set((data ?? []).flatMap((r) => r.tags))].sort(), [data])
 
   const shown = useMemo(() => {
@@ -119,7 +121,7 @@ export default function Library() {
         {shown.map((r, i) => (
           <li key={r.id} className="rise" style={{ animationDelay: `${Math.min(i, 8) * 40}ms` }}>
             <Link to={`/recipe/${r.id}`} className="rcard">
-              <span className={`rtile t${tileIndex(r.title)}`} aria-hidden>{dishEmoji(r.title, r.tags)}</span>
+              <RecipeThumb title={r.title} tags={r.tags} src={covers.data?.[r.id]} />
               <span className="rbody">
                 <b>{r.favorite && <Heart size={13} weight="fill" className="heart" aria-label="Favorite" />} {r.title}</b>
                 <span className="meta">{ago(r.last_cooked_at)}{r.cooked_count > 0 ? ` · ${r.cooked_count}×` : ''}</span>

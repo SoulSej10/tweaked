@@ -6,6 +6,8 @@ import { Shell } from '../components/Shell'
 import { listRecentCooks, listRecipes } from '../lib/api'
 import { buildFeed, thumbUrl, type Dish } from '../lib/discover'
 import { dishEmoji, tileIndex } from '../lib/emoji'
+import { RecipeThumb } from '../components/RecipeThumb'
+import { loadCovers } from '../lib/covers'
 import { historyFrom } from '../lib/history'
 import { OPEN_SEED } from '../lib/openSeed'
 import { useAsync } from '../lib/hooks'
@@ -38,6 +40,7 @@ export default function Home() {
   const { session } = useAuth()
   const { prefs, name } = usePrefs()
   const recipes = useAsync(listRecipes, [])
+  const covers = useAsync(async () => (recipes.data ? await loadCovers(recipes.data) : {}), [recipes.data?.map((r) => r.id + r.source_url + r.title).join()])
   const cooks = useAsync(() => listRecentCooks(60), [])
   const shopping = useShopping().filter((i) => !i.done).length
   const nav = useNavigate()
@@ -128,7 +131,7 @@ export default function Home() {
           <div className="rail">
             {again.map((r) => (
               <Link key={r.id} to={`/recipe/${r.id}`} className="mini">
-                <span className={`mini-tile t${tileIndex(r.title)}`} aria-hidden>{dishEmoji(r.title, r.tags)}</span>
+                <RecipeThumb mini title={r.title} tags={r.tags} src={covers.data?.[r.id]} />
                 <b>{r.title}</b>
                 <small>{ago(r.last_cooked_at)} · {r.cooked_count}×</small>
               </Link>
