@@ -9,6 +9,7 @@ import { addItems } from '../lib/shopping'
 import { convertIngredient, formatIngredient, scaleAmount, type UnitSystem } from '../lib/parse'
 import { ArrowLeft, Heart, Package, ShareNetwork, ShoppingCart } from '@phosphor-icons/react'
 import { Picker } from '../components/Picker'
+import { ShareSheet } from '../components/ShareSheet'
 
 export default function Detail() {
   const { id = '' } = useParams()
@@ -25,6 +26,7 @@ export default function Detail() {
   const [units, setUnits] = useState<UnitSystem>(defaults.units)
   const [added, setAdded] = useState<number | null>(null)
   const [fav, setFav] = useState<boolean | null>(null)
+  const [shareOpen, setShareOpen] = useState(false)
   const { toast, confirm } = useFeedback()
   useTitle(data?.recipe.title)
 
@@ -119,7 +121,7 @@ export default function Detail() {
         <Link to="/recipes" className="float-back" aria-label="Back to recipes"><ArrowLeft size={20} /></Link>
         <div className="float-actions">
           <button className={`float-btn ${favorite ? 'on' : ''}`} onClick={toggleFavorite} aria-pressed={favorite} aria-label={favorite ? 'Remove from favorites' : 'Add to favorites'}><Heart size={20} weight={favorite ? 'fill' : 'regular'} /></button>
-          <button className="float-btn" onClick={share} aria-label="Share this recipe"><ShareNetwork size={20} /></button>
+          <button className="float-btn" onClick={() => setShareOpen(true)} aria-label="Share this recipe"><ShareNetwork size={20} /></button>
         </div>
       </div>
 
@@ -223,6 +225,7 @@ export default function Detail() {
           <Link to={`/recipe/${recipe.id}/edit`} className="btn primary grow">Add ingredients &amp; steps</Link>
         )}
       </div>
+      <ShareSheet recipeId={recipe.id} title={recipe.title} open={shareOpen} onClose={() => setShareOpen(false)} asText={share} />
     </main>
   )
 }

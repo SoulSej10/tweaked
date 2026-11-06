@@ -11,6 +11,7 @@ import Legal from './pages/Legal'
 import Login from './pages/Login'
 import { Navigate } from 'react-router-dom'
 import { CookingPot } from '@phosphor-icons/react'
+import { pendingShare } from './lib/share'
 const Compare = lazy(() => import('./pages/Compare'))
 const Cook = lazy(() => import('./pages/Cook'))
 const Detail = lazy(() => import('./pages/Detail'))
@@ -24,6 +25,7 @@ const ResetPassword = lazy(() => import('./pages/ResetPassword'))
 const Settings = lazy(() => import('./pages/Settings'))
 const Shopping = lazy(() => import('./pages/Shopping'))
 const Share = lazy(() => import('./pages/Share'))
+const SharedRecipe = lazy(() => import('./pages/SharedRecipe'))
 
 const Splash = () => (
   <main className="splash"><CookingPot size={44} weight="duotone" className="splash-icon" aria-hidden /><p className="muted">Warming up the pan…</p></main>
@@ -54,7 +56,10 @@ function Routed() {
   const { loading, onboarded } = usePrefs()
   const { pathname } = useLocation()
   if (loading) return <Splash />
-  if (!onboarded && pathname !== '/onboarding' && pathname !== '/terms' && pathname !== '/privacy') return <Navigate to="/onboarding" replace />
+  // Someone who signed up to keep a shared recipe is taken back to it (after the quick taste quiz, if new).
+  const pending = pendingShare.get()
+  if (!onboarded && pathname !== '/onboarding' && pathname !== '/terms' && pathname !== '/privacy' && !pathname.startsWith('/s/')) return <Navigate to="/onboarding" replace />
+  if (onboarded && pending && pathname === '/') return <Navigate to={`/s/${pending}`} replace />
   return (
     <Suspense fallback={<Splash />}>
       <RouteEffects />
@@ -72,6 +77,7 @@ function Routed() {
         <Route path="/settings" element={<Settings />} />
         <Route path="/shopping" element={<Shopping />} />
         <Route path="/share" element={<Share />} />
+        <Route path="/s/:token" element={<SharedRecipe />} />
         <Route path="/terms" element={<Legal kind="terms" />} />
         <Route path="/privacy" element={<Legal kind="privacy" />} />
         <Route path="*" element={<NotFound />} />
@@ -102,6 +108,14 @@ function Gate() {
   }
   if (!session) {
     // The legal pages must be readable before signing in.
+    // A shared recipe can be read without an account.
+    if (pathname.startsWith('/s/')) {
+      return (
+        <Routes>
+          <Route path="/s/:token" element={<Suspense fallback={<Splash />}><SharedRecipe /></Suspense>} />
+        </Routes>
+      )
+    }
     if (pathname === '/terms') return <Legal kind="terms" />
     if (pathname === '/privacy') return <Legal kind="privacy" />
     return <Login />

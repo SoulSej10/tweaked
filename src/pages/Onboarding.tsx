@@ -4,6 +4,7 @@ import { AVOID, CUISINES, EFFORTS, KINDS, toggle, type Effort, type Preferences 
 import { usePrefs } from '../prefs'
 import { Brand } from '../components/Brand'
 import { CookingPot, Hourglass, Lightning } from '@phosphor-icons/react'
+import { pendingShare } from '../lib/share'
 
 const STEPS = ['welcome', 'cuisines', 'kinds', 'effort', 'avoid'] as const
 
@@ -22,7 +23,8 @@ export default function Onboarding() {
     setErr(null)
     try {
       await save(p)
-      nav('/', { replace: true })
+      const pending = pendingShare.get()
+      nav(pending ? `/s/${pending}` : '/', { replace: true })
     } catch (e) {
       setErr((e as Error).message)
       setBusy(false)

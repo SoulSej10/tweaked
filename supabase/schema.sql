@@ -202,3 +202,32 @@ grant execute on function public.delete_my_account() to authenticated;
 create trigger on_auth_user_created after insert on auth.users for each row execute function public.handle_new_user();
 create trigger recipe_versions_immutable before update on public.recipe_versions for each row execute function public.block_version_update();
 create trigger recipes_touch before update on public.recipes for each row execute function public.touch_updated_at();
+
+
+-- ---------- sharing (added 2026-11-06) ----------
+-- Private share links. A link is a random token; only its hash is stored, along with a frozen copy of the
+-- recipe. Visitors never read this table: they use peek_share / open_share, which hand out one recipe.
+create table public.recipe_shares (
+  id uuid primary key default gen_random_uuid(),
+  recipe_id uuid not null references public.recipes (id) on delete cascade,
+  owner_id uuid not null default auth.uid() references public.profiles (id) on delete cascade,
+  token_hash text not null unique,
+  kind text not null check (kind in ('once', 'open')),
+  snapshot jsonb not null,
+  created_at timestamptz not null default now(),
+  expires_at timestamptz not null default now() + interval '7 days',
+  claimed_at timestamptz,
+  claim_hash text,
+  views integer not null default 0,
+  revoked_at timestamptz
+);
+create index recipe_shares_recipe_idx on public.recipe_shares (recipe_id, created_at desc);
+create index recipe_shares_owner_idx on public.recipe_shares (owner_id, created_at desc);
+alter table public.recipe_shares enable row level security;
+create policy "owners see their links" on public.recipe_shares for select to authenticated using (owner_id = (select auth.uid()));
+create policy "owners revoke their links" on public.recipe_shares for update to authenticated using (owner_id = (select auth.uid())) with check (owner_id = (select auth.uid()));
+revoke all on public.recipe_shares from anon, authenticated;
+grant select (id, recipe_id, kind, created_at, expires_at, claimed_at, views, revoked_at) on public.recipe_shares to authenticated;
+grant update (revoked_at) on public.recipe_shares to authenticated;
+-- Functions create_share, share_state, peek_share and open_share: see the 'recipe_sharing' migration in the Supabase project.
+-- kind 'once': the first browser to open it claims it (claim_hash); only that browser can reopen it. kind 'open': anyone, until it expires.

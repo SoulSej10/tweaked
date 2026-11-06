@@ -38,7 +38,7 @@ function PasswordInput(props: { value: string; onChange: (v: string) => void; pl
   )
 }
 
-export default function Login() {
+export default function Login({ note }: { note?: string } = {}) {
   useTitle('Sign in')
   const [mode, setMode] = useState<Mode>('in')
   const [email, setEmail] = useState('')
@@ -155,6 +155,7 @@ export default function Login() {
   return (
     <main className="login">
       <Brand />
+      {note && <p className="callout-plain" role="status">{note}</p>}
 
       {sent ? (
         <section className="stack" aria-live="polite">
